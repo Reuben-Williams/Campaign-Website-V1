@@ -4,6 +4,8 @@ import Link from "next/link";
 import "./globals.css";
 import { navItems, siteConfig } from "@/content/site";
 
+const primaryNavLabels = ["Home", "About", "Issues", "Events", "News", "Contact"];
+
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
@@ -47,7 +49,7 @@ export default function RootLayout({
           </Link>
           <nav className="desktop-nav" aria-label="Main navigation">
             {navItems
-              .filter((item) => ["About", "Issues", "Events", "News", "Contact"].includes(item.label))
+              .filter((item) => primaryNavLabels.includes(item.label))
               .map((item) => (
               <Link key={item.href} href={item.href}>
                 {item.label}
@@ -82,7 +84,7 @@ export default function RootLayout({
         </Link>
         <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
           {navItems
-            .filter((item) => ["About", "Issues", "Events", "News", "Contact"].includes(item.label))
+            .filter((item) => primaryNavLabels.includes(item.label))
             .map((item) => (
               <Link key={item.href} href={item.href}>
                 <span aria-hidden="true" />

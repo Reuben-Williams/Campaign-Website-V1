@@ -107,7 +107,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(18px, 3vw, 44px);
+  gap: clamp(14px, 2.4vw, 34px);
   color: #424856;
   font-size: 13px;
   font-weight: 900;
@@ -221,6 +221,10 @@ textarea {
 
 .hero-bg {
   object-fit: cover;
+}
+
+.home-hero .hero-bg {
+  object-position: center 28%;
 }
 
 .hero-scrim {
@@ -1069,7 +1073,7 @@ select:focus {
   white-space: nowrap;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1120px) {
   .desktop-nav,
   .header-actions {
     display: none;
@@ -1222,7 +1226,7 @@ select:focus {
     left: 0;
     z-index: 80;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 2px;
     padding: 8px 10px 10px;
     border-top: 1px solid rgba(117, 119, 127, 0.2);

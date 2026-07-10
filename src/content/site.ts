@@ -60,8 +60,8 @@ export const pages: CampaignPage[] = [
     ctaHref: "/volunteer",
     images: [
       {
-        src: "/images/campaign/carmen-officials-chamber.jpg",
-        alt: "Carmen Morales standing with public officials inside the State House chamber.",
+        src: "/images/campaign/carmen-statehouse-leaders.jpg",
+        alt: "Carmen Morales standing with state leaders in an official State House setting.",
       },
       {
         src: "/images/campaign/student-champions-assembly.jpg",
