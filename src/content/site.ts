@@ -62,14 +62,17 @@ export const pages: CampaignPage[] = [
       {
         src: "/images/campaign/carmen-statehouse-leaders.jpg",
         alt: "Carmen Morales standing with state leaders in an official State House setting.",
+        focus: "50% 30%",
       },
       {
         src: "/images/campaign/student-champions-assembly.jpg",
         alt: "Students and community leaders recognized inside the Assembly chamber.",
+        focus: "50% 42%",
       },
       {
         src: "/images/campaign/community-table-outreach.jpg",
         alt: "Campaign supporters greeting neighbors at an outdoor community table.",
+        focus: "50% 32%",
       },
     ],
     sections: [
@@ -100,14 +103,17 @@ export const pages: CampaignPage[] = [
       {
         src: "/images/campaign/carmen-statehouse-leaders.jpg",
         alt: "Carmen Morales meeting with state leaders in a formal office.",
+        focus: "50% 30%",
       },
       {
         src: "/images/campaign/carmen-with-community-leaders.jpg",
         alt: "Carmen Morales standing with community leaders at a local gathering.",
+        focus: "50% 26%",
       },
       {
         src: "/images/campaign/carmen-family-community.jpg",
         alt: "Carmen Morales kneeling beside a child during a community event.",
+        focus: "66% 34%",
       },
     ],
     sections: [
@@ -138,14 +144,17 @@ export const pages: CampaignPage[] = [
       {
         src: "/images/campaign/education-graduation-continued.jpg",
         alt: "A graduate facing a full stadium with a decorated cap about continuing forward.",
+        focus: "50% 24%",
       },
       {
         src: "/images/campaign/roundtable-listening-session.jpg",
         alt: "Residents and organizers gathered for a roundtable listening session.",
+        focus: "50% 36%",
       },
       {
         src: "/images/campaign/bloomfield-community-visit.jpg",
         alt: "Carmen Morales visiting with Bloomfield community members outdoors.",
+        focus: "50% 34%",
       },
     ],
     sections: [
@@ -182,14 +191,17 @@ export const pages: CampaignPage[] = [
       {
         src: "/images/campaign/coffee-shop-event.jpg",
         alt: "Community members gathered inside a coffee shop for a campaign event.",
+        focus: "50% 38%",
       },
       {
         src: "/images/campaign/podium-events-venue.jpg",
         alt: "A campaign event podium set up inside an event venue.",
+        focus: "50% 34%",
       },
       {
         src: "/images/campaign/campaign-office-briefing.jpg",
         alt: "Campaign supporters attending a briefing inside a campaign office.",
+        focus: "50% 34%",
       },
     ],
     sections: [
@@ -220,14 +232,17 @@ export const pages: CampaignPage[] = [
       {
         src: "/images/campaign/local-endorsement-team.jpg",
         alt: "Local supporters standing together with campaign signs.",
+        focus: "50% 34%",
       },
       {
         src: "/images/campaign/community-supporters-venue.jpg",
         alt: "Community supporters gathered together at a local venue.",
+        focus: "50% 34%",
       },
       {
         src: "/images/campaign/carmen-statehouse-leaders.jpg",
         alt: "Carmen Morales standing with state leaders in an official setting.",
+        focus: "50% 30%",
       },
     ],
     sections: [
@@ -258,14 +273,17 @@ export const pages: CampaignPage[] = [
       {
         src: "/images/campaign/student-champions-assembly.jpg",
         alt: "Student champions and public officials photographed in the Assembly chamber.",
+        focus: "50% 42%",
       },
       {
         src: "/images/campaign/community-table-outreach.jpg",
         alt: "Campaign outreach table set up during a neighborhood event.",
+        focus: "50% 32%",
       },
       {
         src: "/images/campaign/roundtable-listening-session.jpg",
         alt: "A listening session with residents around a table.",
+        focus: "50% 36%",
       },
     ],
     sections: [
@@ -296,10 +314,12 @@ export const pages: CampaignPage[] = [
       {
         src: "/images/campaign/carmen-neighborhood-conversation.jpg",
         alt: "Carmen Morales speaking with neighbors during a community conversation.",
+        focus: "50% 30%",
       },
       {
         src: "/images/campaign/carmen-family-community.jpg",
         alt: "Carmen Morales connecting with a family at a community event.",
+        focus: "66% 34%",
       },
     ],
     sections: [
@@ -330,14 +350,17 @@ export const pages: CampaignPage[] = [
       {
         src: "/images/campaign/volunteer-team-morales.jpg",
         alt: "A Morales campaign volunteer recruitment graphic with team photos.",
+        focus: "50% 50%",
       },
       {
         src: "/images/campaign/campaign-office-briefing.jpg",
         alt: "Volunteers and organizers gathered for a campaign briefing.",
+        focus: "50% 34%",
       },
       {
         src: "/images/campaign/community-table-outreach.jpg",
         alt: "Volunteers speaking with neighbors at a community outreach table.",
+        focus: "50% 32%",
       },
     ],
     sections: [
@@ -368,10 +391,12 @@ export const pages: CampaignPage[] = [
       {
         src: "/images/campaign/carmen-officials-chamber.jpg",
         alt: "Carmen Morales with public officials inside a formal chamber.",
+        focus: "50% 24%",
       },
       {
         src: "/images/campaign/local-endorsement-team.jpg",
         alt: "Supporters gathered with campaign signs at a local endorsement event.",
+        focus: "50% 34%",
       },
     ],
     sections: [

@@ -35,6 +35,14 @@ describe("campaign site content", () => {
       }
     }
   });
+
+  it("defines focal points for cropped campaign photography", () => {
+    for (const page of pages) {
+      for (const image of page.images) {
+        expect(image.focus, `${page.slug}: ${image.src}`).toMatch(/^\d{1,3}% \d{1,3}%$/);
+      }
+    }
+  });
 });
 
 describe("Supabase browser client", () => {

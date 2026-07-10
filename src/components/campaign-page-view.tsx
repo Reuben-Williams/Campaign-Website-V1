@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import type { CampaignImage, CampaignPage } from "@/content/site";
 import { siteConfig } from "@/content/site";
 import { withBasePath } from "@/lib/paths";
@@ -82,6 +83,12 @@ const eventCards = [
 
 const donationAmounts = ["25", "50", "100", "250"];
 
+function imageFocusStyle(image: CampaignImage): CSSProperties {
+  return {
+    objectPosition: image.focus ?? "50% 50%",
+  };
+}
+
 export function CampaignPageView({
   page,
   variant = "standard",
@@ -124,6 +131,7 @@ function HomeHero({ page }: { page: CampaignPage }) {
         fill
         priority
         sizes="100vw"
+        style={imageFocusStyle(page.images[0])}
       />
       <div className="hero-scrim" />
       <div className="hero-grid stitch-container">
@@ -162,6 +170,7 @@ function InteriorHero({ page }: { page: CampaignPage }) {
           fill
           priority
           sizes="100vw"
+          style={imageFocusStyle(page.images[0])}
         />
         <div className="hero-scrim" />
         <div className="stitch-container hero-copy light">
@@ -201,6 +210,7 @@ function InteriorHero({ page }: { page: CampaignPage }) {
           priority
           loading="eager"
           sizes="(max-width: 900px) 100vw, 48vw"
+          style={imageFocusStyle(page.images[0])}
         />
         {page.slug === "issues" ? (
           <figcaption>"Progress through practical, proven solutions."</figcaption>
@@ -256,7 +266,13 @@ function HomeSections({ page }: { page: CampaignPage }) {
         </div>
         <div className="mission-grid">
           <figure className="leader-card">
-            <Image src={withBasePath(page.images[1].src)} alt={page.images[1].alt} fill sizes="(max-width: 900px) 100vw, 62vw" />
+            <Image
+              src={withBasePath(page.images[1].src)}
+              alt={page.images[1].alt}
+              fill
+              sizes="(max-width: 900px) 100vw, 62vw"
+              style={imageFocusStyle(page.images[1])}
+            />
             <figcaption>
               <h3>A Leader Who Listens</h3>
               <p>
@@ -286,7 +302,13 @@ function HomeSections({ page }: { page: CampaignPage }) {
           </div>
           <div className="issue-preview-grid">
             <article className="issue-feature-card">
-              <Image src={withBasePath(page.images[2].src)} alt={page.images[2].alt} fill sizes="(max-width: 900px) 100vw, 58vw" />
+              <Image
+                src={withBasePath(page.images[2].src)}
+                alt={page.images[2].alt}
+                fill
+                sizes="(max-width: 900px) 100vw, 58vw"
+                style={imageFocusStyle(page.images[2])}
+              />
               <div>
                 <p className="section-pill">Education</p>
                 <h3>Investing in Our Future Generations</h3>
@@ -387,6 +409,7 @@ function IssuesPanel({ page }: { page: CampaignPage }) {
           fill
           loading="eager"
           sizes="(max-width: 900px) 100vw, 62vw"
+          style={imageFocusStyle(page.images[1])}
         />
         <div>
           <span className="material-chip">school</span>
@@ -634,7 +657,14 @@ function MiniPriority({
 function SmallIssue({ image, title }: { image: CampaignImage; title: string }) {
   return (
     <article className="small-issue">
-      <Image src={withBasePath(image.src)} alt={image.alt} width={160} height={120} sizes="92px" />
+      <Image
+        src={withBasePath(image.src)}
+        alt={image.alt}
+        width={160}
+        height={120}
+        sizes="92px"
+        style={imageFocusStyle(image)}
+      />
       <div>
         <p className="section-pill">Priority</p>
         <h3>{title}</h3>
@@ -653,6 +683,7 @@ function ImageCard({ image }: { image: CampaignImage }) {
         width={1200}
         height={900}
         sizes="(max-width: 900px) 100vw, 42vw"
+        style={imageFocusStyle(image)}
       />
     </figure>
   );
