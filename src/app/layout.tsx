@@ -43,13 +43,12 @@ export default function RootLayout({
         <header className="site-header">
           <Link href="/" className="brand" aria-label={`${siteConfig.campaignName} home`}>
             <span className="brand-mark">M</span>
-            <span>
-              <strong>Morales</strong>
-              <small>for Assembly</small>
-            </span>
+            <span>Morales {siteConfig.year}</span>
           </Link>
           <nav className="desktop-nav" aria-label="Main navigation">
-            {navItems.slice(1, -2).map((item) => (
+            {navItems
+              .filter((item) => ["About", "Issues", "Events", "News", "Contact"].includes(item.label))
+              .map((item) => (
               <Link key={item.href} href={item.href}>
                 {item.label}
               </Link>
@@ -67,7 +66,7 @@ export default function RootLayout({
         {children}
         <footer className="site-footer">
           <div>
-            <p className="footer-brand">{siteConfig.campaignName}</p>
+            <p className="footer-brand">Morales {siteConfig.year}</p>
             <p>{siteConfig.footerLegal}</p>
           </div>
           <nav aria-label="Footer navigation">
@@ -78,6 +77,19 @@ export default function RootLayout({
             ))}
           </nav>
         </footer>
+        <Link className="floating-donate" href="/donate" aria-label="Donate Now">
+          ♥
+        </Link>
+        <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
+          {navItems
+            .filter((item) => ["About", "Issues", "Events", "News", "Contact"].includes(item.label))
+            .map((item) => (
+              <Link key={item.href} href={item.href}>
+                <span aria-hidden="true" />
+                {item.label}
+              </Link>
+            ))}
+        </nav>
       </body>
     </html>
   );
