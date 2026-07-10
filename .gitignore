@@ -1,0 +1,13 @@
+node_modules/
+.next/
+out/
+.agents/
+.codex/
+.env
+.env*.local
+*.log
+.vercel/
+.DS_Store
+.codex-photo-contact-sheet.jpg
+.codex-next-dev*.log
+tsconfig.tsbuildinfo
