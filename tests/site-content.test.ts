@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { navItems, pages, siteConfig } from "@/content/site";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -42,6 +44,12 @@ describe("campaign site content", () => {
         expect(image.focus, `${page.slug}: ${image.src}`).toMatch(/^\d{1,3}% \d{1,3}%$/);
       }
     }
+  });
+
+  it("keeps featured content image frames tall enough for focal-point crops", () => {
+    const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(css).toMatch(/\.content-card\.wide \.image-card\s*{[^}]*--image-card-height:\s*clamp\(340px,\s*32vw,\s*460px\)/s);
   });
 });
 
