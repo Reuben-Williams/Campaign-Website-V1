@@ -24,6 +24,8 @@ type LanguageContextValue = {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 const storageKey = "morales-language";
+const originalTextByNode = new WeakMap<Text, string>();
+const originalAttributesByElement = new WeakMap<HTMLElement, Map<string, string>>();
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>("en");
@@ -92,12 +94,43 @@ export function LanguageToggle({ className = "" }: { className?: string }) {
   );
 }
 
+export function translateSurfaceValue(
+  value: string,
+  language: Language,
+  originalValue?: string,
+) {
+  const leading = value.match(/^\s*/)?.[0] ?? "";
+  const trailing = value.match(/\s*$/)?.[0] ?? "";
+  const normalized = value.trim().replace(/\s+/g, " ");
+
+  if (language === "en") {
+    return {
+      value: originalValue ?? value,
+      original: originalValue,
+    };
+  }
+
+  const source = translateText(normalized, "es") !== normalized
+    ? normalized
+    : originalValue;
+
+  if (!source) {
+    return {
+      value,
+      original: originalValue,
+    };
+  }
+
+  return {
+    value: `${leading}${translateText(source, "es")}${trailing}`,
+    original: source,
+  };
+}
+
 export function translateDocumentSurface(language: Language) {
   if (typeof document === "undefined") return;
 
   document.documentElement.lang = language === "es" ? "es" : "en";
-
-  if (language === "en") return;
 
   const skipTags = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEXTAREA"]);
   const walker = document.createTreeWalker(
@@ -125,14 +158,18 @@ export function translateDocumentSurface(language: Language) {
   }
 
   for (const node of nodes) {
-    const original = node.data;
-    const leading = original.match(/^\s*/)?.[0] ?? "";
-    const trailing = original.match(/\s*$/)?.[0] ?? "";
-    const normalized = original.trim().replace(/\s+/g, " ");
-    const translated = translateText(normalized, language);
+    const result = translateSurfaceValue(
+      node.data,
+      language,
+      originalTextByNode.get(node),
+    );
 
-    if (translated !== normalized) {
-      node.data = `${leading}${translated}${trailing}`;
+    if (result.original) {
+      originalTextByNode.set(node, result.original);
+    }
+
+    if (node.data !== result.value) {
+      node.data = result.value;
     }
   }
 
@@ -143,10 +180,21 @@ export function translateDocumentSurface(language: Language) {
       const value = element.getAttribute(attribute);
       if (!value) continue;
 
-      const translated = translateText(value.trim().replace(/\s+/g, " "), language);
+      const originalAttributes =
+        originalAttributesByElement.get(element) ?? new Map<string, string>();
+      const result = translateSurfaceValue(
+        value,
+        language,
+        originalAttributes.get(attribute),
+      );
 
-      if (translated !== value) {
-        element.setAttribute(attribute, translated);
+      if (result.original) {
+        originalAttributes.set(attribute, result.original);
+        originalAttributesByElement.set(element, originalAttributes);
+      }
+
+      if (result.value !== value) {
+        element.setAttribute(attribute, result.value);
       }
     }
   }

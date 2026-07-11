@@ -5,6 +5,7 @@ import {
   translateCampaignPage,
   translateText,
 } from "@/lib/i18n";
+import { translateSurfaceValue } from "@/components/language-provider";
 
 describe("site translations", () => {
   it("translates core campaign interface text into Spanish", () => {
@@ -48,5 +49,22 @@ describe("site translations", () => {
     expect(translatedHome.title).toBe("Liderazgo arraigado en la comunidad. Resultados para el futuro.");
     expect(translatedHome.sections[0]?.title).toBe("Una campaña centrada primero en escuchar.");
     expect(home!.title).toBe("Leadership rooted in community. Results built for the future.");
+  });
+
+  it("restores hardcoded interface text after switching Spanish back to English", () => {
+    const spanishContact = translateSurfaceValue(
+      "Send a note to the campaign.",
+      "es",
+    );
+
+    expect(spanishContact.value).toBe("Envía una nota a la campaña.");
+
+    const restoredContact = translateSurfaceValue(
+      spanishContact.value,
+      "en",
+      spanishContact.original,
+    );
+
+    expect(restoredContact.value).toBe("Send a note to the campaign.");
   });
 });
