@@ -24,9 +24,9 @@ export const metadata: Metadata = {
     template: `%s | ${siteConfig.campaignName}`,
   },
   description:
-    "A modern campaign website demo for Carmen Morales and Morales for Assembly.",
+    "A modern campaign website for Carmen Morales and Morales for Assembly.",
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://reuben-williams.github.io/Campaign-Website-V1",
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://moralesforassembly.com",
   ),
 };
 

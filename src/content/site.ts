@@ -32,7 +32,7 @@ export const siteConfig = {
   donationUrl: "/donate",
   volunteerUrl: "/volunteer",
   footerLegal:
-    "Paid for by Morales for Assembly. Demo content prepared for campaign website review.",
+    "Paid for by Morales for Assembly. Prepared for campaign website review.",
 };
 
 export const navItems = [
@@ -86,7 +86,7 @@ export const pages: CampaignPage[] = [
         kicker: "Momentum",
         title: "A modern campaign presence for a serious local race.",
         body:
-          "This demo keeps the design polished and editorial while leaving room for the final domain, donation platform, voter tools, and Supabase-backed campaign operations.",
+          "This site keeps the design polished and editorial while leaving room for the final domain, donation platform, voter tools, and campaign operations.",
       },
     ],
   },
@@ -256,7 +256,7 @@ export const pages: CampaignPage[] = [
         kicker: "Organizations",
         title: "Built for future endorsement updates.",
         body:
-          "When official endorsement language is ready, the content can move from static cards into Supabase-backed entries without redesigning the page.",
+          "When official endorsement language is ready, the content can move from static cards into structured campaign entries without redesigning the page.",
       },
     ],
   },
@@ -327,7 +327,7 @@ export const pages: CampaignPage[] = [
         kicker: "Campaign Office",
         title: "A direct line for community questions.",
         body:
-          "The contact form is ready for a future Supabase table or email workflow. For the GitHub Pages demo, it presents the final layout without collecting submissions.",
+          "The contact form is ready for a future database table or email workflow. It presents the final layout without collecting submissions.",
       },
       {
         kicker: "Press",
@@ -368,7 +368,7 @@ export const pages: CampaignPage[] = [
         kicker: "Field",
         title: "Canvass, call, text, and welcome voters.",
         body:
-          "The volunteer page is ready to connect with a future Supabase-backed signup flow after the campaign chooses its data process.",
+          "The volunteer page is ready to connect with a future signup flow after the campaign chooses its data process.",
       },
       {
         kicker: "Community",
@@ -404,7 +404,7 @@ export const pages: CampaignPage[] = [
         kicker: "Contribute",
         title: "Fuel voter contact and campaign visibility.",
         body:
-          "This static demo includes the donation page layout. The final contribution link can be connected when the campaign selects its compliance-approved payment platform.",
+          "This page includes the donation layout. The final contribution link can be connected when the campaign selects its compliance-approved payment platform.",
       },
       {
         kicker: "Compliance",

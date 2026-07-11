@@ -533,7 +533,7 @@ function ContactPanel() {
         <p className="section-kicker">Contact</p>
         <h2>Send a note to the campaign.</h2>
         <p>
-          This GitHub Pages demo keeps the form static. The markup is ready for a future Supabase insert or
+          This public preview keeps the form static. The markup is ready for a future database insert or
           email workflow when the final backend is approved.
         </p>
       </div>
@@ -548,7 +548,7 @@ function VolunteerPanel() {
       <div>
         <p className="section-kicker">Volunteer Signup</p>
         <h2>Tell the team how you want to help.</h2>
-        <p>Choose a field role, event role, or hosting opportunity and the campaign can connect this form to Supabase later.</p>
+        <p>Choose a field role, event role, or hosting opportunity and the campaign can connect this form to the final backend later.</p>
       </div>
       <CampaignForm buttonLabel="Sign Up" includeInterest />
     </section>

@@ -1,4 +1,4 @@
-name: Deploy Next.js static export to GitHub Pages
+name: Deploy Next.js static export
 
 on:
   push:
@@ -33,8 +33,8 @@ jobs:
       - name: Build static export
         run: npm run build
         env:
-          GITHUB_PAGES: "true"
-          NEXT_PUBLIC_SITE_URL: https://reuben-williams.github.io/Campaign-Website-V1
+          PUBLISH_BASE_PATH: /Campaign-Website-V1
+          NEXT_PUBLIC_SITE_URL: https://moralesforassembly.com
 
       - name: Add nojekyll marker
         run: touch out/.nojekyll
@@ -51,11 +51,11 @@ jobs:
 
   deploy:
     environment:
-      name: github-pages
+      name: pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy site
         id: deployment
         uses: actions/deploy-pages@v4

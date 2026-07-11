@@ -1,6 +1,6 @@
-# Morales for Assembly Campaign Website Demo
+# Morales for Assembly Campaign Website
 
-Next.js static demo for Carmen Morales / Morales for Assembly. The current build is configured for GitHub Pages and is ready to move to Vercel when the campaign confirms domains and backend services.
+Next.js static campaign website for Carmen Morales / Morales for Assembly. The current build is configured for static publishing and is ready for a custom domain when the campaign confirms domains and backend services.
 
 ## Local Development
 
@@ -17,14 +17,13 @@ npm run typecheck
 npm run build
 ```
 
-## GitHub Pages
+## Static Publishing
 
-The workflow in `.github/workflows/pages.yml` builds the static export with `GITHUB_PAGES=true`, which applies the `/Campaign-Website-V1` base path needed for the repository Pages URL.
+The publishing workflow builds the static export with `PUBLISH_BASE_PATH=/Campaign-Website-V1`, which applies the base path needed for the public staging URL.
 
-After pushing to `main`, enable Pages in GitHub with **Source: GitHub Actions**.
+After pushing to `main`, the configured publishing action builds and releases the site.
 
-## Vercel And Supabase Prep
+## Future Backend Prep
 
-- `.env.example` contains the future public site URL and Supabase browser variables.
-- `src/lib/supabase/client.ts` exports `getSupabaseBrowserClient()`, which returns `null` until `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are configured.
-- Keep service-role or secret Supabase keys out of browser code and out of `NEXT_PUBLIC_*` variables.
+- `.env.example` contains the future public site URL.
+- Keep service-role or secret backend keys out of browser code and out of `NEXT_PUBLIC_*` variables.

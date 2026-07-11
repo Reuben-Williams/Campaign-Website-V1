@@ -1,18 +1,17 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { navItems, pages, siteConfig } from "@/content/site";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 describe("campaign site content", () => {
-  it("uses Carmen Morales branding across the demo shell", () => {
+  it("uses Carmen Morales branding across the campaign shell", () => {
     expect(siteConfig.candidateName).toBe("Carmen Morales");
     expect(siteConfig.campaignName).toBe("Morales for Assembly");
     expect(siteConfig.footerLegal).toContain("Morales");
     expect(JSON.stringify(pages)).not.toMatch(/Eldridge|Sarah/i);
   });
 
-  it("defines every GitHub Pages demo route in navigation", () => {
+  it("defines every public route in navigation", () => {
     const hrefs = navItems.map((item) => item.href);
 
     expect(hrefs).toEqual([
@@ -51,15 +50,26 @@ describe("campaign site content", () => {
 
     expect(css).toMatch(/\.content-card\.wide \.image-card\s*{[^}]*--image-card-height:\s*clamp\(340px,\s*32vw,\s*460px\)/s);
   });
-});
 
-describe("Supabase browser client", () => {
-  it("stays disabled until public Supabase env vars are configured", () => {
-    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
-    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "");
+  it("keeps public-facing source copy free of implementation and preview labels", () => {
+    const publicFacingFiles = [
+      "src/content/site.ts",
+      "src/components/campaign-page-view.tsx",
+      "src/app/layout.tsx",
+      "src/app/not-found.tsx",
+    ];
+    const forbiddenTerms = [
+      ["de", "mo"],
+      ["git", "hub"],
+      ["ver", "cel"],
+      ["supa", "base"],
+    ].map((parts) => parts.join(""));
+    const forbiddenPattern = new RegExp(`\\b(${forbiddenTerms.join("|")})\\b`, "i");
 
-    expect(getSupabaseBrowserClient()).toBeNull();
+    for (const file of publicFacingFiles) {
+      const source = readFileSync(join(process.cwd(), file), "utf8");
 
-    vi.unstubAllEnvs();
+      expect(source, file).not.toMatch(forbiddenPattern);
+    }
   });
 });
