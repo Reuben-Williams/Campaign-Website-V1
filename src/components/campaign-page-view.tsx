@@ -1,8 +1,12 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import type { CampaignImage, CampaignPage } from "@/content/site";
 import { siteConfig } from "@/content/site";
+import { useI18n } from "@/components/language-provider";
+import { translateCampaignPage } from "@/lib/i18n";
 import { withBasePath } from "@/lib/paths";
 
 type CampaignPageViewProps = {
@@ -90,9 +94,11 @@ function imageFocusStyle(image: CampaignImage): CSSProperties {
 }
 
 export function CampaignPageView({
-  page,
+  page: sourcePage,
   variant = "standard",
 }: CampaignPageViewProps) {
+  const { language, t } = useI18n();
+  const page = translateCampaignPage(sourcePage, language);
   const isHome = variant === "home";
 
   return (
@@ -110,11 +116,11 @@ export function CampaignPageView({
       {page.slug === "donate" ? <DonatePanel /> : null}
 
       <MovementSignup
-        title={page.slug === "events" ? "Join us on the trail." : "Join the Movement"}
+        title={page.slug === "events" ? t("Join us on the trail.") : t("Join the Movement")}
         body={
           page.slug === "events"
-            ? "Sign up for event updates and volunteer opportunities in your neighborhood."
-            : "Sign up to receive campaign updates, volunteer opportunities, and news from the trail."
+            ? t("Sign up for event updates and volunteer opportunities in your neighborhood.")
+            : t("Sign up to receive campaign updates, volunteer opportunities, and news from the trail.")
         }
       />
     </main>

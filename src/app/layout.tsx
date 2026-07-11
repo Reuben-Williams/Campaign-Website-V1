@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
-import Link from "next/link";
+import { SiteChrome } from "@/components/site-chrome";
+import { siteConfig } from "@/content/site";
 import "./globals.css";
-import { navItems, siteConfig } from "@/content/site";
-
-const primaryNavLabels = ["Home", "About", "Issues", "Events", "News", "Contact"];
 
 const inter = Inter({
   subsets: ["latin"],
@@ -42,56 +40,7 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
     >
       <body>
-        <header className="site-header">
-          <Link href="/" className="brand" aria-label={`${siteConfig.campaignName} home`}>
-            <span className="brand-mark">M</span>
-            <span>Morales {siteConfig.year}</span>
-          </Link>
-          <nav className="desktop-nav" aria-label="Main navigation">
-            {navItems
-              .filter((item) => primaryNavLabels.includes(item.label))
-              .map((item) => (
-              <Link key={item.href} href={item.href}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-          <div className="header-actions">
-            <Link className="button button-secondary compact" href="/volunteer">
-              Volunteer
-            </Link>
-            <Link className="button button-action compact" href="/donate">
-              Donate
-            </Link>
-          </div>
-        </header>
-        {children}
-        <footer className="site-footer">
-          <div>
-            <p className="footer-brand">Morales {siteConfig.year}</p>
-            <p>{siteConfig.footerLegal}</p>
-          </div>
-          <nav aria-label="Footer navigation">
-            {navItems.map((item) => (
-              <Link key={item.href} href={item.href}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </footer>
-        <Link className="floating-donate" href="/donate" aria-label="Donate Now">
-          ♥
-        </Link>
-        <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
-          {navItems
-            .filter((item) => primaryNavLabels.includes(item.label))
-            .map((item) => (
-              <Link key={item.href} href={item.href}>
-                <span aria-hidden="true" />
-                {item.label}
-              </Link>
-            ))}
-        </nav>
+        <SiteChrome>{children}</SiteChrome>
       </body>
     </html>
   );
