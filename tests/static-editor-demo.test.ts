@@ -43,4 +43,12 @@ describe("GitHub Pages editor demo", () => {
     expect(styles).toContain(".demo-image-target-layer");
     expect(styles).toContain(".demo-image-target-chip");
   });
+
+  it("clips image target frames to the visible editor viewport", () => {
+    const editor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+
+    expect(editor).toContain("editorViewportTop");
+    expect(editor).toContain("visibleBottom <= visibleTop");
+    expect(editor).not.toContain("y: Math.max(96, rect.top)");
+  });
 });

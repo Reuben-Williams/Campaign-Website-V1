@@ -219,19 +219,30 @@ export function StaticSiteEditor() {
     });
 
     function refreshImageTargets() {
+      const editorViewportTop = 96;
+      const viewportInset = 8;
+
       setImageTargets(
         Array.from(document.querySelectorAll<HTMLImageElement>('[data-demo-editable-kind="image"]'))
           .map((element) => {
             const key = element.dataset.demoEditableKey;
             const rect = element.getBoundingClientRect();
-            if (!key || rect.width < 24 || rect.height < 24) return null;
+            const visibleLeft = Math.max(viewportInset, rect.left);
+            const visibleTop = Math.max(editorViewportTop, rect.top);
+            const visibleRight = Math.min(window.innerWidth - viewportInset, rect.right);
+            const visibleBottom = Math.min(window.innerHeight - viewportInset, rect.bottom);
+            const visibleWidth = visibleRight - visibleLeft;
+            const visibleHeight = visibleBottom - visibleTop;
+
+            if (!key || visibleRight <= visibleLeft || visibleBottom <= visibleTop) return null;
+            if (visibleWidth < 24 || visibleHeight < 24) return null;
 
             return {
               key,
-              x: Math.max(8, rect.left),
-              y: Math.max(96, rect.top),
-              width: Math.min(rect.width, window.innerWidth - Math.max(8, rect.left) - 8),
-              height: Math.min(rect.height, window.innerHeight - Math.max(96, rect.top) - 8),
+              x: visibleLeft,
+              y: visibleTop,
+              width: visibleWidth,
+              height: visibleHeight,
               label: element.alt || "Image",
             };
           })
