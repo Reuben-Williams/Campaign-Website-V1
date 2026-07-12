@@ -51,4 +51,21 @@ describe("GitHub Pages editor demo", () => {
     expect(editor).toContain("visibleBottom <= visibleTop");
     expect(editor).not.toContain("y: Math.max(96, rect.top)");
   });
+
+  it("provides a demo media gallery and upload path for image swaps", () => {
+    const editor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+    const styles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(editor).toContain("type MediaAsset");
+    expect(editor).toContain("staticGalleryAssets");
+    expect(editor).toContain("uploadedGalleryAssets");
+    expect(editor).toContain('accept="image/*"');
+    expect(editor).toContain("Choose from gallery");
+    expect(editor).toContain("Upload image");
+    expect(editor).toContain("FileReader");
+    expect(editor).toContain("readAsDataURL");
+    expect(styles).toContain(".demo-gallery-grid");
+    expect(styles).toContain(".demo-gallery-card");
+    expect(styles).toContain(".demo-upload-control");
+  });
 });

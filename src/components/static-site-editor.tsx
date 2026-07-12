@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, FormEvent, MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
 
 type EditableKind = "text" | "image" | "link";
 
@@ -29,10 +29,150 @@ type ImageTargetState = {
   label: string;
 };
 
+type MediaAsset = {
+  id: string;
+  src: string;
+  alt: string;
+  label: string;
+  mimeType: string;
+  source: "seed" | "upload";
+};
+
 const editStoragePrefix = "campaign-v1-static-editor";
 const editorSessionKey = "campaign-v1-static-editor-active";
 const editSelector =
   "main h1, main h2, main h3, main p, main blockquote, main a, main button, main time, main strong, main small, main span, footer p, footer a, header a, header nav a, img";
+
+const staticGalleryAssets: MediaAsset[] = [
+  {
+    id: "seed:carmen-statehouse-leaders",
+    src: "/images/campaign/carmen-statehouse-leaders.jpg",
+    alt: "Carmen Morales standing with state leaders in an official State House setting.",
+    label: "State House leaders",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:student-champions-assembly",
+    src: "/images/campaign/student-champions-assembly.jpg",
+    alt: "Students and community leaders recognized inside the Assembly chamber.",
+    label: "Student champions",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:community-table-outreach",
+    src: "/images/campaign/community-table-outreach.jpg",
+    alt: "Campaign supporters greeting neighbors at an outdoor community table.",
+    label: "Community outreach",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:carmen-with-community-leaders",
+    src: "/images/campaign/carmen-with-community-leaders.jpg",
+    alt: "Carmen Morales standing with community leaders at a local gathering.",
+    label: "Community leaders",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:carmen-family-community",
+    src: "/images/campaign/carmen-family-community.jpg",
+    alt: "Carmen Morales connecting with a family at a community event.",
+    label: "Family community event",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:education-graduation-continued",
+    src: "/images/campaign/education-graduation-continued.jpg",
+    alt: "A graduate facing a full stadium with a decorated cap about continuing forward.",
+    label: "Education graduation",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:roundtable-listening-session",
+    src: "/images/campaign/roundtable-listening-session.jpg",
+    alt: "Residents and organizers gathered for a roundtable listening session.",
+    label: "Listening session",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:bloomfield-community-visit",
+    src: "/images/campaign/bloomfield-community-visit.jpg",
+    alt: "Carmen Morales visiting with Bloomfield community members outdoors.",
+    label: "Bloomfield visit",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:coffee-shop-event",
+    src: "/images/campaign/coffee-shop-event.jpg",
+    alt: "Community members gathered inside a coffee shop for a campaign event.",
+    label: "Coffee shop event",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:podium-events-venue",
+    src: "/images/campaign/podium-events-venue.jpg",
+    alt: "A campaign event podium set up inside an event venue.",
+    label: "Event podium",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:campaign-office-briefing",
+    src: "/images/campaign/campaign-office-briefing.jpg",
+    alt: "Campaign supporters attending a briefing inside a campaign office.",
+    label: "Office briefing",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:local-endorsement-team",
+    src: "/images/campaign/local-endorsement-team.jpg",
+    alt: "Local supporters standing together with campaign signs.",
+    label: "Endorsement team",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:community-supporters-venue",
+    src: "/images/campaign/community-supporters-venue.jpg",
+    alt: "Community supporters gathered together at a local venue.",
+    label: "Supporters venue",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:carmen-neighborhood-conversation",
+    src: "/images/campaign/carmen-neighborhood-conversation.jpg",
+    alt: "Carmen Morales speaking with neighbors during a community conversation.",
+    label: "Neighborhood talk",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:volunteer-team-morales",
+    src: "/images/campaign/volunteer-team-morales.jpg",
+    alt: "A Morales campaign volunteer recruitment graphic with team photos.",
+    label: "Volunteer team",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+  {
+    id: "seed:carmen-officials-chamber",
+    src: "/images/campaign/carmen-officials-chamber.jpg",
+    alt: "Carmen Morales with public officials inside a formal chamber.",
+    label: "Officials chamber",
+    mimeType: "image/jpeg",
+    source: "seed",
+  },
+];
 
 const pageOptions = [
   { label: "Home", path: "/" },
@@ -48,6 +188,13 @@ const pageOptions = [
 
 function siteBasePath() {
   return window.location.pathname.startsWith("/Campaign-Website-V1") ? "/Campaign-Website-V1" : "";
+}
+
+function withSiteBasePath(src: string) {
+  if (!src || /^(https?:|data:|blob:)/.test(src)) return src;
+  const base = siteBasePath();
+  if (!base || !src.startsWith("/") || src.startsWith(`${base}/`)) return src;
+  return `${base}${src}`;
 }
 
 function normalizedPath() {
@@ -132,7 +279,7 @@ function applyStoredEdits() {
 
     if (edit.kind === "image" && element instanceof HTMLImageElement) {
       element.removeAttribute("srcset");
-      element.src = edit.src;
+      element.src = withSiteBasePath(edit.src);
       element.alt = edit.alt;
     }
   });
@@ -143,8 +290,11 @@ export function StaticSiteEditor() {
   const [active, setActive] = useState(false);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [imageTargets, setImageTargets] = useState<ImageTargetState[]>([]);
+  const [uploadedGalleryAssets, setUploadedGalleryAssets] = useState<MediaAsset[]>([]);
   const [status, setStatus] = useState("Demo edits save in this browser only.");
   const selectedElement = useRef<HTMLElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const galleryAssets = [...uploadedGalleryAssets, ...staticGalleryAssets];
 
   function openMenuForElement(element: HTMLElement, clientX: number, clientY: number) {
     const kind = element.dataset.demoEditableKind as EditableKind | undefined;
@@ -219,7 +369,9 @@ export function StaticSiteEditor() {
     });
 
     function refreshImageTargets() {
-      const editorViewportTop = 96;
+      const toolbarBottom =
+        document.querySelector<HTMLElement>(".demo-editor-toolbar")?.getBoundingClientRect().bottom ?? 88;
+      const editorViewportTop = toolbarBottom + 8;
       const viewportInset = 8;
 
       setImageTargets(
@@ -291,6 +443,18 @@ export function StaticSiteEditor() {
     };
   }, [active]);
 
+  useEffect(() => {
+    if (!menu || !menuRef.current) return;
+
+    const rect = menuRef.current.getBoundingClientRect();
+    const nextX = Math.max(12, Math.min(menu.x, window.innerWidth - rect.width - 12));
+    const nextY = Math.max(12, Math.min(menu.y, window.innerHeight - rect.height - 12));
+
+    if (Math.abs(nextX - menu.x) > 1 || Math.abs(nextY - menu.y) > 1) {
+      setMenu({ ...menu, x: nextX, y: nextY });
+    }
+  }, [menu]);
+
   function enterEditor(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     window.sessionStorage.setItem(editorSessionKey, "true");
@@ -329,7 +493,7 @@ export function StaticSiteEditor() {
 
     if (menu.kind === "image" && element instanceof HTMLImageElement) {
       element.removeAttribute("srcset");
-      element.src = menu.src;
+      element.src = withSiteBasePath(menu.src);
       element.alt = menu.alt;
       writeEdit(menu.key, { kind: "image", src: menu.src, alt: menu.alt });
     }
@@ -341,6 +505,52 @@ export function StaticSiteEditor() {
   function clearEdits() {
     window.localStorage.removeItem(storageKey());
     window.location.reload();
+  }
+
+  function selectGalleryAsset(asset: MediaAsset) {
+    if (!menu || menu.kind !== "image") return;
+
+    setMenu({ ...menu, src: asset.src, alt: asset.alt });
+    setStatus(
+      asset.source === "upload"
+        ? `Selected uploaded image: ${asset.label}. Save locally to apply.`
+        : `Selected gallery image: ${asset.label}. Save locally to apply.`,
+    );
+  }
+
+  function uploadGalleryAsset(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setStatus("Choose an image file such as PNG, JPEG, GIF, WebP, or SVG.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = typeof reader.result === "string" ? reader.result : "";
+      if (!src) {
+        setStatus("That image could not be loaded in the demo editor.");
+        return;
+      }
+
+      const asset: MediaAsset = {
+        id: `upload:${file.name}:${file.lastModified}`,
+        src,
+        alt: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "),
+        label: file.name,
+        mimeType: file.type || "image/*",
+        source: "upload",
+      };
+
+      setUploadedGalleryAssets((assets) => [asset, ...assets.filter((item) => item.id !== asset.id)]);
+      setMenu((current) => (current?.kind === "image" ? { ...current, src: asset.src, alt: asset.alt } : current));
+      setStatus(`Uploaded ${file.name}. Save locally to apply this image.`);
+    };
+    reader.readAsDataURL(file);
   }
 
   return (
@@ -421,7 +631,11 @@ export function StaticSiteEditor() {
         : null}
 
       {menu ? (
-        <div className="demo-editor-ui demo-context-menu" style={{ left: menu.x, top: menu.y }}>
+        <div
+          ref={menuRef}
+          className="demo-editor-ui demo-context-menu"
+          style={{ left: menu.x, top: menu.y, maxHeight: `calc(100vh - ${menu.y + 12}px)` }}
+        >
           <p className="demo-kicker">{menu.kind} tools</p>
           {(menu.kind === "text" || menu.kind === "link") && (
             <label>
@@ -445,6 +659,30 @@ export function StaticSiteEditor() {
                 Alt text
                 <textarea value={menu.alt} onChange={(event) => setMenu({ ...menu, alt: event.target.value })} />
               </label>
+              <div className="demo-gallery-panel">
+                <div>
+                  <strong>Choose from gallery</strong>
+                  <span>Demo media now. Backend media records can replace this same asset shape later.</span>
+                </div>
+                <label className="demo-upload-control">
+                  Upload image
+                  <input type="file" accept="image/*" onChange={uploadGalleryAsset} />
+                </label>
+                <div className="demo-gallery-grid">
+                  {galleryAssets.map((asset) => (
+                    <button
+                      className="demo-gallery-card"
+                      key={asset.id}
+                      type="button"
+                      onClick={() => selectGalleryAsset(asset)}
+                      title={`${asset.label} (${asset.mimeType})`}
+                    >
+                      <img src={withSiteBasePath(asset.src)} alt="" />
+                      <span>{asset.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </>
           )}
           <div className="demo-context-actions">

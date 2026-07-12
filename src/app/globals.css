@@ -1709,6 +1709,8 @@ select:focus {
   position: fixed;
   z-index: 280;
   width: min(330px, calc(100vw - 24px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
   display: grid;
   gap: 12px;
   border: 1px solid rgba(15, 23, 42, 0.14);
@@ -1717,6 +1719,86 @@ select:focus {
   box-shadow: 0 22px 70px rgba(15, 23, 42, 0.24);
   padding: 14px;
   color: #172033;
+}
+
+.demo-gallery-panel {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+
+.demo-gallery-panel > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.demo-gallery-panel strong {
+  color: #172033;
+  font-size: 0.86rem;
+}
+
+.demo-gallery-panel span {
+  color: #667085;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.demo-upload-control {
+  border: 1px dashed #94a3b8;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 10px;
+}
+
+.demo-upload-control input {
+  min-height: auto;
+  padding: 8px;
+}
+
+.demo-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 236px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.demo-gallery-card {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #172033;
+  cursor: pointer;
+  padding: 6px;
+  text-align: left;
+}
+
+.demo-gallery-card:hover,
+.demo-gallery-card:focus-visible {
+  border-color: #0f766e;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.16);
+}
+
+.demo-gallery-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.demo-gallery-card span {
+  overflow: hidden;
+  color: #334155;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 body.demo-editor-active {
