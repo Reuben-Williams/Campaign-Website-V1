@@ -109,4 +109,13 @@ describe("GitHub Pages editor demo", () => {
     expect(styles).toContain(".demo-history-rollback-actions");
     expect(styles).toContain(".demo-history-undo-button");
   });
+
+  it("keeps history rollback actions the same width", () => {
+    const styles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(styles).toContain("--demo-history-action-width");
+    expect(styles).toContain("grid-template-columns: minmax(0, 1fr) minmax(240px, 0.85fr) var(--demo-history-action-width)");
+    expect(styles).toContain("width: var(--demo-history-action-width)");
+    expect(styles).toContain("box-sizing: border-box");
+  });
 });

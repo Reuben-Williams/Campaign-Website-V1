@@ -1895,6 +1895,8 @@ select:focus {
 }
 
 .demo-history-modal {
+  --demo-history-action-width: 138px;
+
   box-sizing: border-box;
   width: min(980px, calc(100vw - 44px));
   max-height: min(820px, calc(100vh - 64px));
@@ -1928,7 +1930,7 @@ select:focus {
 
 .demo-history-event {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.85fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.85fr) var(--demo-history-action-width);
   gap: 14px;
   align-items: start;
   border: 1px solid #d8dee8;
@@ -1955,6 +1957,8 @@ select:focus {
 }
 
 .demo-history-event button {
+  box-sizing: border-box;
+  width: var(--demo-history-action-width);
   border: 1px solid #0f766e;
   border-radius: 8px;
   background: #0f766e;
@@ -2025,9 +2029,15 @@ select:focus {
 .demo-history-rollback-actions {
   display: grid;
   gap: 8px;
+  width: var(--demo-history-action-width);
 }
 
 .demo-history-rollback-note {
+  box-sizing: border-box;
+  display: inline-flex;
+  width: var(--demo-history-action-width);
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
   background: #eef2ff;
   color: #3730a3 !important;
