@@ -60,10 +60,17 @@ describe("GitHub Pages editor demo", () => {
     expect(editor).toContain("staticGalleryAssets");
     expect(editor).toContain("uploadedGalleryAssets");
     expect(editor).toContain('accept="image/*"');
+    expect(editor).toContain("Open gallery");
+    expect(editor).toContain("galleryOpen");
+    expect(editor).toContain("demo-gallery-modal");
+    expect(editor).toContain("demo-gallery-backdrop");
+    expect(editor).toContain("aria-labelledby=\"demo-gallery-title\"");
     expect(editor).toContain("Choose from gallery");
     expect(editor).toContain("Upload image");
     expect(editor).toContain("FileReader");
     expect(editor).toContain("readAsDataURL");
+    expect(styles).toContain(".demo-gallery-backdrop");
+    expect(styles).toContain(".demo-gallery-modal");
     expect(styles).toContain(".demo-gallery-grid");
     expect(styles).toContain(".demo-gallery-card");
     expect(styles).toContain(".demo-upload-control");

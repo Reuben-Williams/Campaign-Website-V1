@@ -1744,6 +1744,17 @@ select:focus {
   line-height: 1.35;
 }
 
+.demo-gallery-open-button {
+  width: 100%;
+  border: 1px solid #0f766e;
+  border-radius: 8px;
+  background: #0f766e;
+  color: white;
+  cursor: pointer;
+  font-weight: 900;
+  padding: 11px 14px;
+}
+
 .demo-upload-control {
   border: 1px dashed #94a3b8;
   border-radius: 8px;
@@ -1756,6 +1767,70 @@ select:focus {
   padding: 8px;
 }
 
+.demo-gallery-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(5, 12, 28, 0.62);
+  backdrop-filter: blur(14px);
+}
+
+.demo-gallery-modal {
+  box-sizing: border-box;
+  width: min(1040px, calc(100vw - 44px));
+  max-height: min(820px, calc(100vh - 64px));
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 28px 90px rgba(0, 8, 30, 0.38);
+  padding: 18px;
+  color: #172033;
+}
+
+.demo-gallery-modal-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.demo-gallery-modal-header div {
+  display: grid;
+  gap: 4px;
+}
+
+.demo-gallery-modal-header h2 {
+  margin: 0;
+  color: #101828;
+  font-size: clamp(1.45rem, 3vw, 2.1rem);
+}
+
+.demo-gallery-modal-header span {
+  color: #667085;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.demo-gallery-modal-header button {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2937;
+  cursor: pointer;
+  font-weight: 900;
+  padding: 10px 14px;
+}
+
+.demo-gallery-upload {
+  max-width: 420px;
+}
+
 .demo-gallery-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1763,6 +1838,15 @@ select:focus {
   max-height: 236px;
   overflow: auto;
   padding-right: 2px;
+}
+
+.demo-gallery-modal .demo-gallery-grid {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  max-height: none;
+  min-height: 0;
+  overflow: auto;
+  padding: 2px 4px 4px 2px;
 }
 
 .demo-gallery-card {
@@ -1797,6 +1881,15 @@ select:focus {
   color: #334155;
   font-size: 0.72rem;
   font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demo-gallery-card small {
+  overflow: hidden;
+  color: #667085;
+  font-size: 0.68rem;
+  font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

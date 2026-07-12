@@ -289,6 +289,7 @@ export function StaticSiteEditor() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [active, setActive] = useState(false);
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [imageTargets, setImageTargets] = useState<ImageTargetState[]>([]);
   const [uploadedGalleryAssets, setUploadedGalleryAssets] = useState<MediaAsset[]>([]);
   const [status, setStatus] = useState("Demo edits save in this browser only.");
@@ -351,6 +352,7 @@ export function StaticSiteEditor() {
     document.body.classList.toggle("demo-editor-active", active);
     if (!active) {
       setMenu(null);
+      setGalleryOpen(false);
       setImageTargets([]);
       return;
     }
@@ -499,6 +501,7 @@ export function StaticSiteEditor() {
     }
 
     setStatus("Demo edit saved locally. It will remain in this browser until cleared.");
+    setGalleryOpen(false);
     setMenu(null);
   }
 
@@ -511,6 +514,7 @@ export function StaticSiteEditor() {
     if (!menu || menu.kind !== "image") return;
 
     setMenu({ ...menu, src: asset.src, alt: asset.alt });
+    setGalleryOpen(false);
     setStatus(
       asset.source === "upload"
         ? `Selected uploaded image: ${asset.label}. Save locally to apply.`
@@ -551,6 +555,12 @@ export function StaticSiteEditor() {
       setStatus(`Uploaded ${file.name}. Save locally to apply this image.`);
     };
     reader.readAsDataURL(file);
+  }
+
+  function closeGalleryFromBackdrop(event: ReactMouseEvent<HTMLDivElement>) {
+    if (event.target === event.currentTarget) {
+      setGalleryOpen(false);
+    }
   }
 
   return (
@@ -661,38 +671,75 @@ export function StaticSiteEditor() {
               </label>
               <div className="demo-gallery-panel">
                 <div>
-                  <strong>Choose from gallery</strong>
-                  <span>Demo media now. Backend media records can replace this same asset shape later.</span>
+                  <strong>Gallery</strong>
+                  <span>Browse all uploaded and demo images in a larger media window.</span>
                 </div>
+                <button className="demo-gallery-open-button" type="button" onClick={() => setGalleryOpen(true)}>
+                  Open gallery
+                </button>
                 <label className="demo-upload-control">
                   Upload image
                   <input type="file" accept="image/*" onChange={uploadGalleryAsset} />
                 </label>
-                <div className="demo-gallery-grid">
-                  {galleryAssets.map((asset) => (
-                    <button
-                      className="demo-gallery-card"
-                      key={asset.id}
-                      type="button"
-                      onClick={() => selectGalleryAsset(asset)}
-                      title={`${asset.label} (${asset.mimeType})`}
-                    >
-                      <img src={withSiteBasePath(asset.src)} alt="" />
-                      <span>{asset.label}</span>
-                    </button>
-                  ))}
-                </div>
               </div>
             </>
           )}
           <div className="demo-context-actions">
-            <button type="button" onClick={() => setMenu(null)}>
+            <button
+              type="button"
+              onClick={() => {
+                setGalleryOpen(false);
+                setMenu(null);
+              }}
+            >
               Cancel
             </button>
             <button type="button" onClick={saveMenuEdit}>
               Save locally
             </button>
           </div>
+        </div>
+      ) : null}
+
+      {galleryOpen && menu?.kind === "image" ? (
+        <div
+          className="demo-editor-ui demo-gallery-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="demo-gallery-title"
+          onMouseDown={closeGalleryFromBackdrop}
+        >
+          <section className="demo-gallery-modal">
+            <div className="demo-gallery-modal-header">
+              <div>
+                <p className="demo-kicker">Media library</p>
+                <h2 id="demo-gallery-title">Choose from gallery</h2>
+                <span>Demo media now. Backend media records can replace this same asset shape later.</span>
+              </div>
+              <button type="button" onClick={() => setGalleryOpen(false)}>
+                Close
+              </button>
+            </div>
+            <label className="demo-upload-control demo-gallery-upload">
+              Upload image
+              <input type="file" accept="image/*" onChange={uploadGalleryAsset} />
+            </label>
+            <div className="demo-gallery-grid">
+              {galleryAssets.map((asset) => (
+                <button
+                  className="demo-gallery-card"
+                  key={asset.id}
+                  type="button"
+                  onClick={() => selectGalleryAsset(asset)}
+                  title={`${asset.label} (${asset.mimeType})`}
+                >
+                  <img src={withSiteBasePath(asset.src)} alt="" />
+                  <span>{asset.label}</span>
+                  <small>{asset.source === "upload" ? "Uploaded image" : "Demo gallery"}</small>
+                </button>
+              ))}
+            </div>
+          </section>
         </div>
       ) : null}
     </>
