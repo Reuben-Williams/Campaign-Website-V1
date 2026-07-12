@@ -1,11 +1,15 @@
 node_modules/
 .next/
 out/
+dist/
+.vinext/
+.wrangler/
 .agents/
 .codex/
 .env
 .env*.local
 *.log
+*.tgz
 .vercel/
 .DS_Store
 .codex-photo-contact-sheet.jpg

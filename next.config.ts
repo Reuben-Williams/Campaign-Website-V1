@@ -3,13 +3,17 @@ import type { NextConfig } from "next";
 const publishBasePath = process.env.PUBLISH_BASE_PATH ?? "";
 
 const nextConfig: NextConfig = {
-  output: "export",
-  trailingSlash: true,
-  basePath: publishBasePath || undefined,
-  assetPrefix: publishBasePath ? `${publishBasePath}/` : undefined,
-  env: {
-    NEXT_PUBLIC_BASE_PATH: publishBasePath,
-  },
+  ...(publishBasePath
+    ? {
+        output: "export" as const,
+        trailingSlash: true,
+        basePath: publishBasePath,
+        assetPrefix: `${publishBasePath}/`,
+        env: {
+          NEXT_PUBLIC_BASE_PATH: publishBasePath,
+        },
+      }
+    : {}),
   images: {
     unoptimized: true,
   },
