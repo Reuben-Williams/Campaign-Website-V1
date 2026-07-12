@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
 
 type EditableKind = "text" | "image" | "link";
 
@@ -240,6 +240,12 @@ export function StaticSiteEditor() {
     setStatus("Demo editor active. Double-click text or click images to edit.");
   }
 
+  function closeLoginFromBackdrop(event: ReactMouseEvent<HTMLDivElement>) {
+    if (event.target === event.currentTarget) {
+      setLoginOpen(false);
+    }
+  }
+
   function exitEditor() {
     window.sessionStorage.removeItem(editorSessionKey);
     setActive(false);
@@ -281,7 +287,13 @@ export function StaticSiteEditor() {
   return (
     <>
       {loginOpen ? (
-        <div className="demo-editor-ui demo-login-backdrop" role="dialog" aria-modal="true" aria-labelledby="demo-login-title">
+        <div
+          className="demo-editor-ui demo-login-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="demo-login-title"
+          onMouseDown={closeLoginFromBackdrop}
+        >
           <form className="demo-login-modal" onSubmit={enterEditor}>
             <p className="demo-kicker">GitHub Pages demo</p>
             <h2 id="demo-login-title">Sign in to edit the site</h2>

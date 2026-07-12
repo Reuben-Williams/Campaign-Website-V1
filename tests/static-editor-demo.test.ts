@@ -25,5 +25,7 @@ describe("GitHub Pages editor demo", () => {
     expect(editor).toContain("pageOptions");
     expect(editor).toContain("sessionStorage");
     expect(editor).toContain('element.removeAttribute("srcset")');
+    expect(editor).toContain("closeLoginFromBackdrop");
+    expect(editor).toContain("event.target === event.currentTarget");
   });
 });
