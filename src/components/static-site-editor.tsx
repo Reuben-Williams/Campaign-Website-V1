@@ -38,8 +38,22 @@ type MediaAsset = {
   source: "seed" | "upload";
 };
 
+type AuditEvent = {
+  id: string;
+  action: "save" | "rollback";
+  pagePath: string;
+  regionKey: string;
+  kind: EditableKind;
+  changedAt: string;
+  oldValue: StoredEdit | null;
+  newValue: StoredEdit | null;
+  summary: string;
+  userLabel: string;
+};
+
 const editStoragePrefix = "campaign-v1-static-editor";
 const editorSessionKey = "campaign-v1-static-editor-active";
+const historyStorageKey = `${editStoragePrefix}:history`;
 const editSelector =
   "main h1, main h2, main h3, main p, main blockquote, main a, main button, main time, main strong, main small, main span, footer p, footer a, header a, header nav a, img";
 
@@ -210,21 +224,87 @@ function navigateToPage(path: string) {
 }
 
 function storageKey() {
-  return `${editStoragePrefix}:${normalizedPath()}`;
+  return storageKeyForPath(normalizedPath());
 }
 
-function readEdits(): Record<string, StoredEdit> {
+function storageKeyForPath(pagePath: string) {
+  return `${editStoragePrefix}:${pagePath}`;
+}
+
+function readEditsForPath(pagePath: string): Record<string, StoredEdit> {
   try {
-    return JSON.parse(window.localStorage.getItem(storageKey()) ?? "{}") as Record<string, StoredEdit>;
+    return JSON.parse(window.localStorage.getItem(storageKeyForPath(pagePath)) ?? "{}") as Record<string, StoredEdit>;
   } catch {
     return {};
   }
 }
 
+function readEdits(): Record<string, StoredEdit> {
+  return readEditsForPath(normalizedPath());
+}
+
+function writeEditForPath(pagePath: string, key: string, edit: StoredEdit | null) {
+  const edits = readEditsForPath(pagePath);
+  if (edit) {
+    edits[key] = edit;
+  } else {
+    delete edits[key];
+  }
+
+  window.localStorage.setItem(storageKeyForPath(pagePath), JSON.stringify(edits));
+}
+
 function writeEdit(key: string, edit: StoredEdit) {
-  const edits = readEdits();
-  edits[key] = edit;
-  window.localStorage.setItem(storageKey(), JSON.stringify(edits));
+  writeEditForPath(normalizedPath(), key, edit);
+}
+
+function readAuditLog(): AuditEvent[] {
+  try {
+    return JSON.parse(window.localStorage.getItem(historyStorageKey) ?? "[]") as AuditEvent[];
+  } catch {
+    return [];
+  }
+}
+
+function appendAuditEvent(event: AuditEvent) {
+  const events = [event, ...readAuditLog()].slice(0, 100);
+  window.localStorage.setItem(historyStorageKey, JSON.stringify(events));
+  return events;
+}
+
+function editSummary(edit: StoredEdit | null) {
+  if (!edit) return "No previous saved value";
+  if (edit.kind === "image") return `${edit.src} | alt: ${edit.alt}`;
+  if (edit.kind === "link") return `${edit.text} -> ${edit.href}`;
+  return edit.text;
+}
+
+function elementEditValue(element: HTMLElement, kind: EditableKind): StoredEdit {
+  if (kind === "image" && element instanceof HTMLImageElement) {
+    return { kind: "image", src: element.getAttribute("src") ?? "", alt: element.alt };
+  }
+
+  if (kind === "link") {
+    return {
+      kind: "link",
+      text: element.textContent?.trim() ?? "",
+      href: element instanceof HTMLAnchorElement ? element.getAttribute("href") ?? "" : "",
+    };
+  }
+
+  return { kind: "text", text: element.textContent?.trim() ?? "" };
+}
+
+function makeAuditEvent(input: Omit<AuditEvent, "id" | "changedAt" | "summary" | "userLabel">): AuditEvent {
+  const actionLabel = input.action === "rollback" ? "Rolled back" : "Changed";
+
+  return {
+    ...input,
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    changedAt: new Date().toISOString(),
+    summary: `${actionLabel} ${input.kind} on ${input.pagePath}`,
+    userLabel: "Demo admin",
+  };
 }
 
 function elementKind(element: Element): EditableKind {
@@ -290,6 +370,8 @@ export function StaticSiteEditor() {
   const [active, setActive] = useState(false);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [imageTargets, setImageTargets] = useState<ImageTargetState[]>([]);
   const [uploadedGalleryAssets, setUploadedGalleryAssets] = useState<MediaAsset[]>([]);
   const [status, setStatus] = useState("Demo edits save in this browser only.");
@@ -324,6 +406,7 @@ export function StaticSiteEditor() {
 
   useEffect(() => {
     applyStoredEdits();
+    setAuditEvents(readAuditLog());
     let timeout: number | undefined;
     const observer = new MutationObserver(() => {
       window.clearTimeout(timeout);
@@ -353,6 +436,7 @@ export function StaticSiteEditor() {
     if (!active) {
       setMenu(null);
       setGalleryOpen(false);
+      setHistoryOpen(false);
       setImageTargets([]);
       return;
     }
@@ -479,10 +563,14 @@ export function StaticSiteEditor() {
   function saveMenuEdit() {
     if (!menu || !selectedElement.current) return;
     const element = selectedElement.current;
+    const pagePath = normalizedPath();
+    const oldValue = elementEditValue(element, menu.kind);
+    let newValue: StoredEdit | null = null;
 
     if (menu.kind === "text") {
       element.textContent = menu.text;
-      writeEdit(menu.key, { kind: "text", text: menu.text });
+      newValue = { kind: "text", text: menu.text };
+      writeEdit(menu.key, newValue);
     }
 
     if (menu.kind === "link") {
@@ -490,14 +578,31 @@ export function StaticSiteEditor() {
       if (element instanceof HTMLAnchorElement) {
         element.href = menu.href;
       }
-      writeEdit(menu.key, { kind: "link", text: menu.text, href: menu.href });
+      newValue = { kind: "link", text: menu.text, href: menu.href };
+      writeEdit(menu.key, newValue);
     }
 
     if (menu.kind === "image" && element instanceof HTMLImageElement) {
       element.removeAttribute("srcset");
       element.src = withSiteBasePath(menu.src);
       element.alt = menu.alt;
-      writeEdit(menu.key, { kind: "image", src: menu.src, alt: menu.alt });
+      newValue = { kind: "image", src: menu.src, alt: menu.alt };
+      writeEdit(menu.key, newValue);
+    }
+
+    if (newValue) {
+      setAuditEvents(
+        appendAuditEvent(
+          makeAuditEvent({
+            action: "save",
+            pagePath,
+            regionKey: menu.key,
+            kind: menu.kind,
+            oldValue,
+            newValue,
+          }),
+        ),
+      );
     }
 
     setStatus("Demo edit saved locally. It will remain in this browser until cleared.");
@@ -508,6 +613,25 @@ export function StaticSiteEditor() {
   function clearEdits() {
     window.localStorage.removeItem(storageKey());
     window.location.reload();
+  }
+
+  function rollbackAuditEvent(event: AuditEvent) {
+    writeEditForPath(event.pagePath, event.regionKey, event.oldValue);
+    const rollbackEvent = makeAuditEvent({
+      action: "rollback",
+      pagePath: event.pagePath,
+      regionKey: event.regionKey,
+      kind: event.kind,
+      oldValue: event.newValue,
+      newValue: event.oldValue,
+    });
+
+    setAuditEvents(appendAuditEvent(rollbackEvent));
+    setStatus(`Rolled back ${event.kind} change from ${new Date(event.changedAt).toLocaleString()}.`);
+
+    if (event.pagePath === normalizedPath()) {
+      applyStoredEdits();
+    }
   }
 
   function selectGalleryAsset(asset: MediaAsset) {
@@ -563,6 +687,12 @@ export function StaticSiteEditor() {
     }
   }
 
+  function closeHistoryFromBackdrop(event: ReactMouseEvent<HTMLDivElement>) {
+    if (event.target === event.currentTarget) {
+      setHistoryOpen(false);
+    }
+  }
+
   return (
     <>
       {loginOpen ? (
@@ -611,6 +741,9 @@ export function StaticSiteEditor() {
               ))}
             </select>
           </label>
+          <button type="button" onClick={() => setHistoryOpen(true)}>
+            Change history
+          </button>
           <button type="button" onClick={clearEdits}>
             Clear demo edits
           </button>
@@ -739,6 +872,65 @@ export function StaticSiteEditor() {
                 </button>
               ))}
             </div>
+          </section>
+        </div>
+      ) : null}
+
+      {historyOpen ? (
+        <div
+          className="demo-editor-ui demo-gallery-backdrop demo-history-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="demo-history-title"
+          onMouseDown={closeHistoryFromBackdrop}
+        >
+          <section className="demo-history-modal">
+            <div className="demo-gallery-modal-header">
+              <div>
+                <p className="demo-kicker">Audit log</p>
+                <h2 id="demo-history-title">Change history</h2>
+                <span>Every saved demo edit is logged with the page, field, time, before value, and after value.</span>
+              </div>
+              <button type="button" onClick={() => setHistoryOpen(false)}>
+                Close
+              </button>
+            </div>
+            {auditEvents.length === 0 ? (
+              <p className="demo-history-empty">No changes have been saved in this browser yet.</p>
+            ) : (
+              <div className="demo-history-list">
+                {auditEvents.map((event) => (
+                  <article className="demo-history-event" key={event.id}>
+                    <div>
+                      <strong>{event.summary}</strong>
+                      <span>
+                        {new Date(event.changedAt).toLocaleString()} by {event.userLabel}
+                      </span>
+                      <small>
+                        Page: {event.pagePath} | Field: {event.regionKey}
+                      </small>
+                    </div>
+                    <dl className="demo-history-values">
+                      <div>
+                        <dt>Before</dt>
+                        <dd>{editSummary(event.oldValue)}</dd>
+                      </div>
+                      <div>
+                        <dt>After</dt>
+                        <dd>{editSummary(event.newValue)}</dd>
+                      </div>
+                    </dl>
+                    {event.action === "save" ? (
+                      <button type="button" onClick={() => rollbackAuditEvent(event)}>
+                        Rollback
+                      </button>
+                    ) : (
+                      <span className="demo-history-rollback-note">Rollback recorded</span>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
         </div>
       ) : null}

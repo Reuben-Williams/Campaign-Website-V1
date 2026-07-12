@@ -75,4 +75,23 @@ describe("GitHub Pages editor demo", () => {
     expect(styles).toContain(".demo-gallery-card");
     expect(styles).toContain(".demo-upload-control");
   });
+
+  it("logs editor changes and exposes rollback from change history", () => {
+    const editor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+    const styles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(editor).toContain("type AuditEvent");
+    expect(editor).toContain("historyStorageKey");
+    expect(editor).toContain("appendAuditEvent");
+    expect(editor).toContain("rollbackAuditEvent");
+    expect(editor).toContain("Change history");
+    expect(editor).toContain("Rollback");
+    expect(editor).toContain("changedAt");
+    expect(editor).toContain("oldValue");
+    expect(editor).toContain("newValue");
+    expect(editor).toContain("toLocaleString");
+    expect(styles).toContain(".demo-history-modal");
+    expect(styles).toContain(".demo-history-event");
+    expect(styles).toContain(".demo-history-values");
+  });
 });

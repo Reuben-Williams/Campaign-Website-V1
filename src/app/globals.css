@@ -1666,7 +1666,7 @@ select:focus {
   left: 16px;
   z-index: 260;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
   align-items: center;
   gap: 12px;
   border: 1px solid rgba(15, 23, 42, 0.14);
@@ -1894,6 +1894,118 @@ select:focus {
   white-space: nowrap;
 }
 
+.demo-history-modal {
+  box-sizing: border-box;
+  width: min(980px, calc(100vw - 44px));
+  max-height: min(820px, calc(100vh - 64px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 28px 90px rgba(0, 8, 30, 0.38);
+  padding: 18px;
+  color: #172033;
+}
+
+.demo-history-empty {
+  margin: 0;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #667085;
+  padding: 18px;
+}
+
+.demo-history-list {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.demo-history-event {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.85fr) auto;
+  gap: 14px;
+  align-items: start;
+  border: 1px solid #d8dee8;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.demo-history-event > div:first-child {
+  display: grid;
+  gap: 5px;
+}
+
+.demo-history-event strong {
+  color: #101828;
+  font-size: 0.95rem;
+}
+
+.demo-history-event span,
+.demo-history-event small {
+  color: #667085;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.demo-history-event button {
+  border: 1px solid #0f766e;
+  border-radius: 8px;
+  background: #0f766e;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 900;
+  padding: 10px 12px;
+}
+
+.demo-history-values {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.demo-history-values div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 8px;
+}
+
+.demo-history-values dt {
+  color: #475467;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.demo-history-values dd {
+  max-height: 72px;
+  margin: 0;
+  overflow: auto;
+  color: #172033;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.demo-history-rollback-note {
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3 !important;
+  font-weight: 900;
+  padding: 8px 10px;
+  text-align: center;
+}
+
 body.demo-editor-active {
   overflow-x: hidden;
   background: #e9eef4;
@@ -1985,6 +2097,10 @@ body.demo-editor-active .hero-scrim {
 
 @media (max-width: 760px) {
   .demo-editor-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-history-event {
     grid-template-columns: 1fr;
   }
 
