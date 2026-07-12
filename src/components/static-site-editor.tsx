@@ -20,6 +20,15 @@ type MenuState = {
   alt: string;
 };
 
+type ImageTargetState = {
+  key: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label: string;
+};
+
 const editStoragePrefix = "campaign-v1-static-editor";
 const editorSessionKey = "campaign-v1-static-editor-active";
 const editSelector =
@@ -133,8 +142,34 @@ export function StaticSiteEditor() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [active, setActive] = useState(false);
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const [imageTargets, setImageTargets] = useState<ImageTargetState[]>([]);
   const [status, setStatus] = useState("Demo edits save in this browser only.");
   const selectedElement = useRef<HTMLElement | null>(null);
+
+  function openMenuForElement(element: HTMLElement, clientX: number, clientY: number) {
+    const kind = element.dataset.demoEditableKind as EditableKind | undefined;
+    const key = element.dataset.demoEditableKey;
+    if (!kind || !key) return;
+
+    selectedElement.current = element;
+    setMenu({
+      key,
+      kind,
+      x: Math.min(clientX, window.innerWidth - 340),
+      y: Math.min(clientY, window.innerHeight - 260),
+      text: element.textContent?.trim() ?? "",
+      href: element instanceof HTMLAnchorElement ? element.getAttribute("href") ?? "" : "",
+      src: element instanceof HTMLImageElement ? element.getAttribute("src") ?? "" : "",
+      alt: element instanceof HTMLImageElement ? element.alt : "",
+    });
+  }
+
+  function openImageTarget(key: string, x: number, y: number) {
+    const element = document.querySelector<HTMLElement>(`[data-demo-editable-key="${CSS.escape(key)}"]`);
+    if (element) {
+      openMenuForElement(element, x, y);
+    }
+  }
 
   useEffect(() => {
     applyStoredEdits();
@@ -151,7 +186,7 @@ export function StaticSiteEditor() {
 
     if (window.sessionStorage.getItem(editorSessionKey) === "true") {
       setActive(true);
-      setStatus("Demo editor active. Double-click text or click images to edit.");
+      setStatus("Demo editor active. Click text or images to edit.");
     }
 
     window.addEventListener("campaign-editor:open-login", openLogin);
@@ -166,47 +201,53 @@ export function StaticSiteEditor() {
     document.body.classList.toggle("demo-editor-active", active);
     if (!active) {
       setMenu(null);
+      setImageTargets([]);
       return;
     }
 
     applyStoredEdits();
     document.querySelectorAll<HTMLElement>("[data-demo-editable-key]").forEach((element) => {
       element.classList.add("demo-editable-target");
+      element.classList.add(
+        element.dataset.demoEditableKind === "image" ? "demo-editable-image-target" : "demo-editable-text-target",
+      );
       element.tabIndex = element.tabIndex < 0 ? 0 : element.tabIndex;
       element.title =
         element.dataset.demoEditableKind === "image"
-          ? "Click or double-click to edit this image"
-          : "Double-click to edit this content";
+          ? "Click to edit this image"
+          : "Click to edit this content";
     });
 
-    function showMenuForElement(element: HTMLElement, clientX: number, clientY: number) {
-      const kind = element.dataset.demoEditableKind as EditableKind | undefined;
-      const key = element.dataset.demoEditableKey;
-      if (!kind || !key) return;
+    function refreshImageTargets() {
+      setImageTargets(
+        Array.from(document.querySelectorAll<HTMLImageElement>('[data-demo-editable-kind="image"]'))
+          .map((element) => {
+            const key = element.dataset.demoEditableKey;
+            const rect = element.getBoundingClientRect();
+            if (!key || rect.width < 24 || rect.height < 24) return null;
 
-      selectedElement.current = element;
-      setMenu({
-        key,
-        kind,
-        x: Math.min(clientX, window.innerWidth - 340),
-        y: Math.min(clientY, window.innerHeight - 260),
-        text: element.textContent?.trim() ?? "",
-        href: element instanceof HTMLAnchorElement ? element.getAttribute("href") ?? "" : "",
-        src: element instanceof HTMLImageElement ? element.getAttribute("src") ?? "" : "",
-        alt: element instanceof HTMLImageElement ? element.alt : "",
-      });
+            return {
+              key,
+              x: Math.max(8, rect.left),
+              y: Math.max(96, rect.top),
+              width: Math.min(rect.width, window.innerWidth - Math.max(8, rect.left) - 8),
+              height: Math.min(rect.height, window.innerHeight - Math.max(96, rect.top) - 8),
+              label: element.alt || "Image",
+            };
+          })
+          .filter((target): target is ImageTargetState => target !== null),
+      );
     }
+
+    refreshImageTargets();
 
     function onPointer(event: MouseEvent) {
       const target = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>("[data-demo-editable-key]") : null;
       if (!target || target.closest(".demo-editor-ui")) return;
-      const kind = target.dataset.demoEditableKind;
 
-      if (kind === "image" || event.detail >= 2) {
-        event.preventDefault();
-        event.stopPropagation();
-        showMenuForElement(target, event.clientX, event.clientY);
-      }
+      event.preventDefault();
+      event.stopPropagation();
+      openMenuForElement(target, event.clientX, event.clientY);
     }
 
     function blockNavigation(event: MouseEvent) {
@@ -219,14 +260,21 @@ export function StaticSiteEditor() {
     document.addEventListener("click", blockNavigation, true);
     document.addEventListener("click", onPointer, true);
     document.addEventListener("dblclick", onPointer, true);
+    window.addEventListener("resize", refreshImageTargets);
+    window.addEventListener("scroll", refreshImageTargets, true);
 
     return () => {
       document.body.classList.remove("demo-editor-active");
       document.removeEventListener("click", blockNavigation, true);
       document.removeEventListener("click", onPointer, true);
       document.removeEventListener("dblclick", onPointer, true);
+      window.removeEventListener("resize", refreshImageTargets);
+      window.removeEventListener("scroll", refreshImageTargets, true);
+      setImageTargets([]);
       document.querySelectorAll<HTMLElement>(".demo-editable-target").forEach((element) => {
         element.classList.remove("demo-editable-target");
+        element.classList.remove("demo-editable-image-target");
+        element.classList.remove("demo-editable-text-target");
         element.removeAttribute("title");
       });
     };
@@ -237,7 +285,7 @@ export function StaticSiteEditor() {
     window.sessionStorage.setItem(editorSessionKey, "true");
     setLoginOpen(false);
     setActive(true);
-    setStatus("Demo editor active. Double-click text or click images to edit.");
+    setStatus("Demo editor active. Click text or images to edit.");
   }
 
   function closeLoginFromBackdrop(event: ReactMouseEvent<HTMLDivElement>) {
@@ -340,6 +388,26 @@ export function StaticSiteEditor() {
           </button>
         </div>
       ) : null}
+
+      {active
+        ? imageTargets.map((target) => (
+            <div
+              className="demo-editor-ui demo-image-target-layer"
+              key={target.key}
+              style={{ left: target.x, top: target.y, width: target.width, height: target.height }}
+              aria-hidden="true"
+            >
+              <button
+                className="demo-image-target-chip"
+                type="button"
+                title={target.label}
+                onClick={() => openImageTarget(target.key, target.x + 18, target.y + 42)}
+              >
+                Image
+              </button>
+            </div>
+          ))
+        : null}
 
       {menu ? (
         <div className="demo-editor-ui demo-context-menu" style={{ left: menu.x, top: menu.y }}>

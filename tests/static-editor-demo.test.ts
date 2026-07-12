@@ -21,11 +21,26 @@ describe("GitHub Pages editor demo", () => {
     expect(chrome).toContain("Edit site");
     expect(editor).toContain("GitHub Pages demo");
     expect(editor).toContain("Back to user view");
-    expect(editor).toContain("Double-click text or click images");
+    expect(editor).toContain("Click text or images");
     expect(editor).toContain("pageOptions");
     expect(editor).toContain("sessionStorage");
     expect(editor).toContain('element.removeAttribute("srcset")');
     expect(editor).toContain("closeLoginFromBackdrop");
     expect(editor).toContain("event.target === event.currentTarget");
+  });
+
+  it("allows single-click editing and distinct image targets", () => {
+    const editor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+    const styles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(editor).not.toContain("event.detail >= 2");
+    expect(editor).toContain("openMenuForElement");
+    expect(editor).toContain("demo-editable-image-target");
+    expect(editor).toContain("demo-image-target-layer");
+    expect(editor).toContain("demo-image-target-chip");
+    expect(styles).toContain(".demo-editable-image-target");
+    expect(styles).toContain(".demo-editable-text-target");
+    expect(styles).toContain(".demo-image-target-layer");
+    expect(styles).toContain(".demo-image-target-chip");
   });
 });
