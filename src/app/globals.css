@@ -1988,13 +1988,43 @@ select:focus {
 }
 
 .demo-history-values dd {
-  max-height: 72px;
+  max-height: 160px;
   margin: 0;
   overflow: auto;
   color: #172033;
   font-size: 0.78rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.demo-history-image-preview {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.demo-history-image-preview img {
+  width: 76px;
+  aspect-ratio: 4 / 3;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #e2e8f0;
+  object-fit: cover;
+}
+
+.demo-history-image-preview p {
+  margin: 0;
+  max-height: 86px;
+  overflow: auto;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.demo-history-rollback-actions {
+  display: grid;
+  gap: 8px;
 }
 
 .demo-history-rollback-note {
@@ -2004,6 +2034,12 @@ select:focus {
   font-weight: 900;
   padding: 8px 10px;
   text-align: center;
+}
+
+.demo-history-undo-button {
+  border-color: #b42318 !important;
+  background: #ffffff !important;
+  color: #b42318 !important;
 }
 
 body.demo-editor-active {

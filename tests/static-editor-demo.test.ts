@@ -94,4 +94,19 @@ describe("GitHub Pages editor demo", () => {
     expect(styles).toContain(".demo-history-event");
     expect(styles).toContain(".demo-history-values");
   });
+
+  it("shows image previews in history and allows rollback records to be undone", () => {
+    const editor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+    const styles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(editor).toContain("renderHistoryValue");
+    expect(editor).toContain("demo-history-image-preview");
+    expect(editor).toContain("Undo rollback");
+    expect(editor).toContain("Rollback recorded");
+    expect(editor).toContain('event.action === "rollback"');
+    expect(editor).toContain("withSiteBasePath(edit.src)");
+    expect(styles).toContain(".demo-history-image-preview");
+    expect(styles).toContain(".demo-history-rollback-actions");
+    expect(styles).toContain(".demo-history-undo-button");
+  });
 });

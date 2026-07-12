@@ -693,6 +693,21 @@ export function StaticSiteEditor() {
     }
   }
 
+  function renderHistoryValue(edit: StoredEdit | null, label: string) {
+    if (!edit) return <span>No previous saved value</span>;
+
+    if (edit.kind === "image") {
+      return (
+        <div className="demo-history-image-preview">
+          <img src={withSiteBasePath(edit.src)} alt={`${label} image preview`} />
+          <p>{editSummary(edit)}</p>
+        </div>
+      );
+    }
+
+    return <span>{editSummary(edit)}</span>;
+  }
+
   return (
     <>
       {loginOpen ? (
@@ -913,19 +928,24 @@ export function StaticSiteEditor() {
                     <dl className="demo-history-values">
                       <div>
                         <dt>Before</dt>
-                        <dd>{editSummary(event.oldValue)}</dd>
+                        <dd>{renderHistoryValue(event.oldValue, "Before")}</dd>
                       </div>
                       <div>
                         <dt>After</dt>
-                        <dd>{editSummary(event.newValue)}</dd>
+                        <dd>{renderHistoryValue(event.newValue, "After")}</dd>
                       </div>
                     </dl>
-                    {event.action === "save" ? (
+                    {event.action === "rollback" ? (
+                      <div className="demo-history-rollback-actions">
+                        <span className="demo-history-rollback-note">Rollback recorded</span>
+                        <button className="demo-history-undo-button" type="button" onClick={() => rollbackAuditEvent(event)}>
+                          Undo rollback
+                        </button>
+                      </div>
+                    ) : (
                       <button type="button" onClick={() => rollbackAuditEvent(event)}>
                         Rollback
                       </button>
-                    ) : (
-                      <span className="demo-history-rollback-note">Rollback recorded</span>
                     )}
                   </article>
                 ))}
