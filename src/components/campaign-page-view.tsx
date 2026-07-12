@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ElementType } from "react";
 import type { CampaignImage, CampaignPage } from "@/content/site";
 import { siteConfig } from "@/content/site";
 import { useI18n } from "@/components/language-provider";
@@ -13,6 +13,43 @@ type CampaignPageViewProps = {
   page: CampaignPage;
   variant?: "home" | "standard";
 };
+
+type EditableValue =
+  | { type: "text"; value: string }
+  | { type: "image"; src: string; alt?: string }
+  | { type: "link"; href: string; label: string };
+
+type PageContent = {
+  regions: Record<string, EditableValue>;
+};
+
+function EditableText({
+  fallback,
+  as: Component = "span",
+}: {
+  id: string;
+  fallback: string;
+  as?: ElementType;
+}) {
+  return <Component>{fallback}</Component>;
+}
+
+function EditableLink({
+  className,
+  fallbackHref,
+  fallbackLabel,
+}: {
+  className?: string;
+  id: string;
+  fallbackHref: string;
+  fallbackLabel: string;
+}) {
+  return (
+    <Link className={className} href={fallbackHref}>
+      {fallbackLabel}
+    </Link>
+  );
+}
 
 const issueCards = [
   {
@@ -103,7 +140,11 @@ export function CampaignPageView({
 
   return (
     <main className={`page-shell page-${page.slug}`}>
-      {isHome ? <HomeHero page={page} /> : <InteriorHero page={page} />}
+      {isHome ? (
+        <HomeHero page={page} />
+      ) : (
+        <InteriorHero page={page} />
+      )}
 
       {isHome ? <HomeSections page={page} /> : <InteriorSections page={page} />}
 
@@ -127,27 +168,59 @@ export function CampaignPageView({
   );
 }
 
-function HomeHero({ page }: { page: CampaignPage }) {
+function regionValue(content: PageContent | undefined, regionId: string): EditableValue | undefined {
+  return content?.regions[regionId];
+}
+
+function imageForRegion(content: PageContent | undefined, regionId: string, fallback: CampaignImage): CampaignImage {
+  const value = regionValue(content, regionId);
+  if (value?.type !== "image") return fallback;
+
+  return {
+    ...fallback,
+    src: value.src || fallback.src,
+    alt: value.alt || fallback.alt,
+  };
+}
+
+function editableRegionProps(mode: "public" | "editor", regionId: string, kind: EditableValue["type"]) {
+  if (mode !== "editor") return {};
+
+  return {
+    "data-builder-region": regionId,
+    "data-builder-kind": kind,
+  };
+}
+
+function HomeHero({
+  page,
+}: {
+  page: CampaignPage;
+}) {
+  const heroImage = page.images[0];
   return (
     <section className="stitch-hero home-hero">
-      <Image
-        className="hero-bg"
-        src={withBasePath(page.images[0].src)}
-        alt={page.images[0].alt}
-        fill
-        priority
-        sizes="100vw"
-        style={imageFocusStyle(page.images[0])}
-      />
+      <div>
+        <Image
+          className="hero-bg"
+          src={withBasePath(heroImage.src)}
+          alt={heroImage.alt}
+          fill
+          priority
+          sizes="100vw"
+          style={imageFocusStyle(heroImage)}
+        />
+      </div>
       <div className="hero-scrim" />
       <div className="hero-grid stitch-container">
         <div className="hero-copy light">
           <p className="section-kicker light">{siteConfig.campaignName} {siteConfig.year}</p>
-          <h1>A Voice for Our Future</h1>
-          <p>
-            Committed to transparent leadership, economic vitality, and bringing genuine progress to our
-            communities. Join the movement for a stronger district.
-          </p>
+          <EditableText id="home.hero.title" fallback="A Voice for Our Future" as="h1" />
+          <EditableText
+            id="home.hero.summary"
+            fallback="Committed to transparent leadership, economic vitality, and bringing genuine progress to our communities. Join the movement for a stronger district."
+            as="p"
+          />
           <div className="hero-actions">
             <Link className="button button-action" href="/donate">
               Contribute Now <span aria-hidden="true">→</span>
@@ -163,32 +236,41 @@ function HomeHero({ page }: { page: CampaignPage }) {
   );
 }
 
-function InteriorHero({ page }: { page: CampaignPage }) {
+function InteriorHero({
+  page,
+}: {
+  page: CampaignPage;
+}) {
   const darkHero = page.slug === "events" || page.slug === "endorsements" || page.slug === "news";
+  const titleRegion = `${page.slug}.hero.title`;
+  const summaryRegion = `${page.slug}.hero.summary`;
+  const imageRegion = `${page.slug}.hero.image`;
+  const ctaRegion = `${page.slug}.hero.primaryCta`;
+  const heroImage = page.images[0];
 
   if (darkHero) {
     return (
       <section className="stitch-hero interior-dark-hero">
-        <Image
-          className="hero-bg"
-          src={withBasePath(page.images[0].src)}
-          alt={page.images[0].alt}
-          fill
-          priority
-          sizes="100vw"
-          style={imageFocusStyle(page.images[0])}
-        />
+        <div>
+          <Image
+            className="hero-bg"
+            src={withBasePath(heroImage.src)}
+            alt={heroImage.alt}
+            fill
+            priority
+            sizes="100vw"
+            style={imageFocusStyle(heroImage)}
+          />
+        </div>
         <div className="hero-scrim" />
         <div className="stitch-container hero-copy light">
           <p className="section-kicker light">
             {page.slug === "events" ? "On the Trail" : page.navLabel}
           </p>
-          <h1>{page.slug === "events" ? "Join Us on the Trail" : page.title}</h1>
-          <p>{page.summary}</p>
+          <EditableText id={titleRegion} fallback={page.slug === "events" ? "Join Us on the Trail" : page.title} as="h1" />
+          <EditableText id={summaryRegion} fallback={page.summary} as="p" />
           {page.ctaHref ? (
-            <Link className="button button-action" href={page.ctaHref}>
-              {page.ctaLabel}
-            </Link>
+            <EditableLink className="button button-action" id={ctaRegion} fallbackHref={page.ctaHref} fallbackLabel={page.ctaLabel ?? "Learn More"} />
           ) : null}
         </div>
       </section>
@@ -199,24 +281,22 @@ function InteriorHero({ page }: { page: CampaignPage }) {
     <section className={`stitch-container split-hero split-hero-${page.slug}`}>
       <div className="hero-copy">
         <p className="section-kicker">{page.slug === "issues" ? "Our Priorities" : page.eyebrow ?? page.navLabel}</p>
-        <h1>{heroTitle(page)}</h1>
-        <p>{page.summary}</p>
+        <EditableText id={titleRegion} fallback={heroTitle(page)} as="h1" />
+        <EditableText id={summaryRegion} fallback={page.summary} as="p" />
         {page.ctaHref ? (
-          <Link className="button button-primary" href={page.ctaHref}>
-            {page.ctaLabel}
-          </Link>
+          <EditableLink className="button button-primary" id={ctaRegion} fallbackHref={page.ctaHref} fallbackLabel={page.ctaLabel ?? "Learn More"} />
         ) : null}
       </div>
       <figure className="portrait-frame">
         <Image
-          src={withBasePath(page.images[0].src)}
-          alt={page.images[0].alt}
+          src={withBasePath(heroImage.src)}
+          alt={heroImage.alt}
           width={1200}
           height={900}
           priority
           loading="eager"
           sizes="(max-width: 900px) 100vw, 48vw"
-          style={imageFocusStyle(page.images[0])}
+          style={imageFocusStyle(heroImage)}
         />
         {page.slug === "issues" ? (
           <figcaption>"Progress through practical, proven solutions."</figcaption>

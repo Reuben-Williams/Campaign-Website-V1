@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
+import { StaticSiteEditor } from "@/components/static-site-editor";
 import { SiteChrome } from "@/components/site-chrome";
 import { siteConfig } from "@/content/site";
 import "./globals.css";
@@ -40,6 +41,7 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
     >
       <body>
+        <StaticSiteEditor />
         <SiteChrome>{children}</SiteChrome>
       </body>
     </html>

@@ -68,6 +68,13 @@ function SiteFrame({ children }: { children: ReactNode }) {
               {t(item.label)}
             </Link>
           ))}
+          <button
+            className="footer-editor-button"
+            type="button"
+            onClick={() => window.dispatchEvent(new Event("campaign-editor:open-login"))}
+          >
+            Edit site
+          </button>
         </nav>
       </footer>
       <Link className="floating-donate" href="/donate" aria-label={t("Donate Now")}>
