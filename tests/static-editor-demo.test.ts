@@ -8,9 +8,41 @@ describe("GitHub Pages editor demo", () => {
     const homePage = readFileSync(join(process.cwd(), "src/app/page.tsx"), "utf8");
     const aboutPage = readFileSync(join(process.cwd(), "src/app/about/page.tsx"), "utf8");
 
-    expect(packageJson).not.toContain("@your-builder");
+    expect(packageJson).not.toContain("@your-builder/editor");
     expect(homePage).not.toContain("force-dynamic");
     expect(aboutPage).not.toContain("force-dynamic");
+  });
+
+  it("vendors the platform editor so GitHub Pages can build the repo by itself", () => {
+    const packageJson = readFileSync(join(process.cwd(), "package.json"), "utf8");
+    const shell = readFileSync(join(process.cwd(), "src/components/platform-editor-shell.tsx"), "utf8");
+    const editorVendor = readFileSync(join(process.cwd(), "src/vendor/site-editor-platform/editor.tsx"), "utf8");
+    const coreVendor = readFileSync(join(process.cwd(), "src/vendor/site-editor-platform/core.ts"), "utf8");
+
+    expect(packageJson).not.toContain("../site-editor-platform");
+    expect(shell).toContain("@/vendor/site-editor-platform/editor");
+    expect(shell).toContain("@/vendor/site-editor-platform/core");
+    expect(editorVendor).toContain("export function EditorShell");
+    expect(editorVendor).toContain("data-builder-viewport-width");
+    expect(coreVendor).toContain("export interface BuilderPage");
+    expect(coreVendor).toContain("isBuilderPreviewMessage");
+  });
+
+  it("uses the shared platform editor route and iframe preview mode", () => {
+    const route = readFileSync(join(process.cwd(), "src/app/admin/editor/page.tsx"), "utf8");
+    const shell = readFileSync(join(process.cwd(), "src/components/platform-editor-shell.tsx"), "utf8");
+    const editor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+    const nextConfig = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
+
+    expect(route).toContain("PlatformEditorShell");
+    expect(shell).toContain("@/vendor/site-editor-platform/editor");
+    expect(shell).toContain("campaign-website-v1");
+    expect(shell).toContain("userViewUrl");
+    expect(shell).toContain("demoMode");
+    expect(editor).toContain('searchParams.get("builderPreview") === "1"');
+    expect(editor).toContain('document.body.classList.add("builder-preview-frame")');
+    expect(editor).toContain('window.location.assign(`${siteBasePath()}/admin/editor/`)');
+    expect(nextConfig).not.toContain('path.resolve(configDirectory, "..")');
   });
 
   it("exposes a footer editor button and a demo-aware credential modal", () => {

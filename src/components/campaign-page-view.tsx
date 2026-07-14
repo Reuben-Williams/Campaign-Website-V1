@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { CSSProperties, ElementType } from "react";
+import type { ComponentProps, CSSProperties, ElementType } from "react";
 import type { CampaignImage, CampaignPage } from "@/content/site";
 import { siteConfig } from "@/content/site";
 import { useI18n } from "@/components/language-provider";
@@ -24,18 +24,26 @@ type PageContent = {
 };
 
 function EditableText({
+  id,
   fallback,
   as: Component = "span",
+  className,
 }: {
   id: string;
   fallback: string;
   as?: ElementType;
+  className?: string;
 }) {
-  return <Component>{fallback}</Component>;
+  return (
+    <Component className={className} {...stableRegionProps(id, "text")}>
+      {fallback}
+    </Component>
+  );
 }
 
 function EditableLink({
   className,
+  id,
   fallbackHref,
   fallbackLabel,
 }: {
@@ -45,10 +53,20 @@ function EditableLink({
   fallbackLabel: string;
 }) {
   return (
-    <Link className={className} href={fallbackHref}>
+    <Link className={className} href={fallbackHref} {...stableRegionProps(id, "link")}>
       {fallbackLabel}
     </Link>
   );
+}
+
+type EditableImageProps = Omit<ComponentProps<typeof Image>, "src" | "alt"> & {
+  id: string;
+  fallback: string;
+  alt: string;
+};
+
+function EditableImage({ id, fallback, alt, ...props }: EditableImageProps) {
+  return <Image src={withBasePath(fallback)} alt={alt} {...props} {...stableRegionProps(id, "image")} />;
 }
 
 const issueCards = [
@@ -157,6 +175,7 @@ export function CampaignPageView({
       {page.slug === "donate" ? <DonatePanel /> : null}
 
       <MovementSignup
+        regionPrefix={page.slug}
         title={page.slug === "events" ? t("Join us on the trail.") : t("Join the Movement")}
         body={
           page.slug === "events"
@@ -183,9 +202,7 @@ function imageForRegion(content: PageContent | undefined, regionId: string, fall
   };
 }
 
-function editableRegionProps(mode: "public" | "editor", regionId: string, kind: EditableValue["type"]) {
-  if (mode !== "editor") return {};
-
+function stableRegionProps(regionId: string, kind: EditableValue["type"]) {
   return {
     "data-builder-region": regionId,
     "data-builder-kind": kind,
@@ -200,10 +217,11 @@ function HomeHero({
   const heroImage = page.images[0];
   return (
     <section className="stitch-hero home-hero">
-      <div>
-        <Image
+      <div className="hero-bg-frame">
+        <EditableImage
+          id="home.hero.image"
           className="hero-bg"
-          src={withBasePath(heroImage.src)}
+          fallback={heroImage.src}
           alt={heroImage.alt}
           fill
           priority
@@ -214,7 +232,12 @@ function HomeHero({
       <div className="hero-scrim" />
       <div className="hero-grid stitch-container">
         <div className="hero-copy light">
-          <p className="section-kicker light">{siteConfig.campaignName} {siteConfig.year}</p>
+          <EditableText
+            id="home.hero.kicker"
+            className="section-kicker light"
+            fallback={`${siteConfig.campaignName} ${siteConfig.year}`}
+            as="p"
+          />
           <EditableText id="home.hero.title" fallback="A Voice for Our Future" as="h1" />
           <EditableText
             id="home.hero.summary"
@@ -222,10 +245,10 @@ function HomeHero({
             as="p"
           />
           <div className="hero-actions">
-            <Link className="button button-action" href="/donate">
+            <Link className="button button-action" href="/donate" {...stableRegionProps("home.hero.donateCta", "link")}>
               Contribute Now <span aria-hidden="true">→</span>
             </Link>
-            <Link className="button button-ghost-light" href="/volunteer">
+            <Link className="button button-ghost-light" href="/volunteer" {...stableRegionProps("home.hero.volunteerCta", "link")}>
               Volunteer <span aria-hidden="true">↗</span>
             </Link>
           </div>
@@ -251,10 +274,11 @@ function InteriorHero({
   if (darkHero) {
     return (
       <section className="stitch-hero interior-dark-hero">
-        <div>
-          <Image
+        <div className="hero-bg-frame">
+          <EditableImage
+            id={imageRegion}
             className="hero-bg"
-            src={withBasePath(heroImage.src)}
+            fallback={heroImage.src}
             alt={heroImage.alt}
             fill
             priority
@@ -264,9 +288,12 @@ function InteriorHero({
         </div>
         <div className="hero-scrim" />
         <div className="stitch-container hero-copy light">
-          <p className="section-kicker light">
-            {page.slug === "events" ? "On the Trail" : page.navLabel}
-          </p>
+          <EditableText
+            id={`${page.slug}.hero.kicker`}
+            className="section-kicker light"
+            fallback={page.slug === "events" ? "On the Trail" : page.navLabel}
+            as="p"
+          />
           <EditableText id={titleRegion} fallback={page.slug === "events" ? "Join Us on the Trail" : page.title} as="h1" />
           <EditableText id={summaryRegion} fallback={page.summary} as="p" />
           {page.ctaHref ? (
@@ -280,7 +307,12 @@ function InteriorHero({
   return (
     <section className={`stitch-container split-hero split-hero-${page.slug}`}>
       <div className="hero-copy">
-        <p className="section-kicker">{page.slug === "issues" ? "Our Priorities" : page.eyebrow ?? page.navLabel}</p>
+        <EditableText
+          id={`${page.slug}.hero.kicker`}
+          className="section-kicker"
+          fallback={page.slug === "issues" ? "Our Priorities" : page.eyebrow ?? page.navLabel}
+          as="p"
+        />
         <EditableText id={titleRegion} fallback={heroTitle(page)} as="h1" />
         <EditableText id={summaryRegion} fallback={page.summary} as="p" />
         {page.ctaHref ? (
@@ -288,8 +320,9 @@ function InteriorHero({
         ) : null}
       </div>
       <figure className="portrait-frame">
-        <Image
-          src={withBasePath(heroImage.src)}
+        <EditableImage
+          id={imageRegion}
+          fallback={heroImage.src}
           alt={heroImage.alt}
           width={1200}
           height={900}
@@ -299,7 +332,11 @@ function InteriorHero({
           style={imageFocusStyle(heroImage)}
         />
         {page.slug === "issues" ? (
-          <figcaption>"Progress through practical, proven solutions."</figcaption>
+          <EditableText
+            id="issues.hero.caption"
+            fallback={'"Progress through practical, proven solutions."'}
+            as="figcaption"
+          />
         ) : null}
       </figure>
     </section>
@@ -342,35 +379,37 @@ function HomeSections({ page }: { page: CampaignPage }) {
     <>
       <section className="mission-section stitch-container">
         <div className="section-intro centered">
-          <p className="section-pill">The Mission</p>
-          <h2>Restoring Trust, Delivering Results</h2>
-          <p>
-            We are at a crossroads. It is time for leadership that prioritizes community over politics.
-            Carmen brings public-service experience with a fresh, modern approach to solving the district's
-            toughest challenges.
-          </p>
+          <EditableText id="home.mission.kicker" className="section-pill" fallback="The Mission" as="p" />
+          <EditableText id="home.mission.title" fallback="Restoring Trust, Delivering Results" as="h2" />
+          <EditableText
+            id="home.mission.summary"
+            fallback="We are at a crossroads. It is time for leadership that prioritizes community over politics. Carmen brings public-service experience with a fresh, modern approach to solving the district's toughest challenges."
+            as="p"
+          />
         </div>
         <div className="mission-grid">
           <figure className="leader-card">
-            <Image
-              src={withBasePath(page.images[1].src)}
+            <EditableImage
+              id="home.mission.leaderImage"
+              fallback={page.images[1].src}
               alt={page.images[1].alt}
               fill
               sizes="(max-width: 900px) 100vw, 62vw"
               style={imageFocusStyle(page.images[1])}
             />
             <figcaption>
-              <h3>A Leader Who Listens</h3>
-              <p>
-                From local meetings to the State House, Carmen keeps an open door and a clear connection to
-                the people she serves.
-              </p>
-              <Link href="/about">Read Full Bio</Link>
+              <EditableText id="home.mission.leaderTitle" fallback="A Leader Who Listens" as="h3" />
+              <EditableText
+                id="home.mission.leaderSummary"
+                fallback="From local meetings to the State House, Carmen keeps an open door and a clear connection to the people she serves."
+                as="p"
+              />
+              <EditableLink id="home.mission.leaderLink" fallbackHref="/about" fallbackLabel="Read Full Bio" />
             </figcaption>
           </figure>
           <div className="mission-stack">
-            <MiniPriority title="Integrity First" icon="verified" />
-            <MiniPriority title="Economic Vitality" icon="trending_up" dark />
+            <MiniPriority id="home.mission.integrity" title="Integrity First" icon="verified" />
+            <MiniPriority id="home.mission.economy" title="Economic Vitality" icon="trending_up" dark />
           </div>
         </div>
       </section>
@@ -379,35 +418,37 @@ function HomeSections({ page }: { page: CampaignPage }) {
         <div className="stitch-container">
           <div className="section-row">
             <div>
-              <p className="section-pill">Key Priorities</p>
-              <h2>Issues That Matter</h2>
+              <EditableText id="home.issues.kicker" className="section-pill" fallback="Key Priorities" as="p" />
+              <EditableText id="home.issues.title" fallback="Issues That Matter" as="h2" />
             </div>
-            <Link className="text-link" href="/issues">
+            <Link className="text-link" href="/issues" {...stableRegionProps("home.issues.viewAllLink", "link")}>
               View All Issues <span aria-hidden="true">→</span>
             </Link>
           </div>
           <div className="issue-preview-grid">
             <article className="issue-feature-card">
-              <Image
-                src={withBasePath(page.images[2].src)}
+              <EditableImage
+                id="home.issues.featuredImage"
+                fallback={page.images[2].src}
                 alt={page.images[2].alt}
                 fill
                 sizes="(max-width: 900px) 100vw, 58vw"
                 style={imageFocusStyle(page.images[2])}
               />
               <div>
-                <p className="section-pill">Education</p>
-                <h3>Investing in Our Future Generations</h3>
-                <p>
-                  We must ensure every child has access to world-class public education, modern classrooms,
-                  and stable support systems.
-                </p>
+                <EditableText id="home.issues.featuredKicker" className="section-pill" fallback="Education" as="p" />
+                <EditableText id="home.issues.featuredTitle" fallback="Investing in Our Future Generations" as="h3" />
+                <EditableText
+                  id="home.issues.featuredSummary"
+                  fallback="We must ensure every child has access to world-class public education, modern classrooms, and stable support systems."
+                  as="p"
+                />
                 <Link href="/issues">Read Plan <span aria-hidden="true">→</span></Link>
               </div>
             </article>
             <div className="issue-side-list">
-              <SmallIssue image={page.images[1]} title="Accessible & Affordable Care" />
-              <SmallIssue image={page.images[0]} title="Building for Tomorrow" />
+              <SmallIssue id="home.issues.accessibleCare" image={page.images[1]} title="Accessible & Affordable Care" />
+              <SmallIssue id="home.issues.tomorrow" image={page.images[0]} title="Building for Tomorrow" />
             </div>
           </div>
         </div>
@@ -425,44 +466,54 @@ function InteriorSections({ page }: { page: CampaignPage }) {
         <section className="bento-section">
           <div className="stitch-container">
             <div className="section-intro centered">
-              <h2>Why I'm Running</h2>
-              <p>
-                The challenges we face require steady, principled leadership. It is time to build a future
-                that works for everyone.
-              </p>
+              <EditableText id="about.bento.title" fallback="Why I'm Running" as="h2" />
+              <EditableText
+                id="about.bento.summary"
+                fallback="The challenges we face require steady, principled leadership. It is time to build a future that works for everyone."
+                as="p"
+              />
             </div>
             <div className="about-bento">
               <article className="bento-large">
                 <span className="material-chip">school</span>
-                <h3>Protecting Public Education</h3>
-                <p>{page.sections[0]?.body}</p>
-                <ImageCard image={page.images[1]} />
+                <EditableText id="about.bento.education.title" fallback="Protecting Public Education" as="h3" />
+                <EditableText id="about.bento.education.summary" fallback={page.sections[0]?.body ?? ""} as="p" />
+                <ImageCard id="about.bento.education.image" image={page.images[1]} />
               </article>
               <article>
                 <span className="material-chip">shield</span>
-                <h3>Accessible Healthcare</h3>
-                <p>Healthcare is a basic human right. No family should face financial ruin because of care.</p>
+                <EditableText id="about.bento.healthcare.title" fallback="Accessible Healthcare" as="h3" />
+                <EditableText
+                  id="about.bento.healthcare.summary"
+                  fallback="Healthcare is a basic human right. No family should face financial ruin because of care."
+                  as="p"
+                />
               </article>
               <article className="dark-card">
                 <span className="material-chip">trending_up</span>
-                <h3>A Sustainable Economy</h3>
-                <p>Creating pathways for good-paying union jobs and resilient infrastructure.</p>
+                <EditableText id="about.bento.economy.title" fallback="A Sustainable Economy" as="h3" />
+                <EditableText
+                  id="about.bento.economy.summary"
+                  fallback="Creating pathways for good-paying union jobs and resilient infrastructure."
+                  as="p"
+                />
               </article>
             </div>
           </div>
         </section>
         <section className="roots-section stitch-container">
           <div>
-            <h2>Roots in the Community.</h2>
-            <p className="section-kicker">Early Life & Education</p>
+            <EditableText id="about.roots.title" fallback="Roots in the Community." as="h2" />
+            <EditableText id="about.roots.kicker" className="section-kicker" fallback="Early Life & Education" as="p" />
           </div>
           <article>
-            <blockquote>
-              "I learned the value of hard work from the families who keep our communities moving every single
-              day."
-            </blockquote>
-            <p>{page.sections[1]?.body}</p>
-            <ImageCard image={page.images[2]} />
+            <EditableText
+              id="about.roots.quote"
+              fallback={'"I learned the value of hard work from the families who keep our communities moving every single day."'}
+              as="blockquote"
+            />
+            <EditableText id="about.roots.summary" fallback={page.sections[1]?.body ?? ""} as="p" />
+            <ImageCard id="about.roots.image" image={page.images[2]} />
           </article>
         </section>
       </>
@@ -474,10 +525,10 @@ function InteriorSections({ page }: { page: CampaignPage }) {
       <div className="stitch-container content-grid">
         {page.sections.map((section, index) => (
           <article key={section.title} className={index === 0 ? "content-card wide" : "content-card"}>
-            <p className="section-kicker">{section.kicker}</p>
-            <h3>{section.title}</h3>
-            <p>{section.body}</p>
-            {page.images[index + 1] ? <ImageCard image={page.images[index + 1]} /> : null}
+            <EditableText id={`${page.slug}.section.${index}.kicker`} className="section-kicker" fallback={section.kicker ?? ""} as="p" />
+            <EditableText id={`${page.slug}.section.${index}.title`} fallback={section.title} as="h3" />
+            <EditableText id={`${page.slug}.section.${index}.body`} fallback={section.body} as="p" />
+            {page.images[index + 1] ? <ImageCard id={`${page.slug}.section.${index}.image`} image={page.images[index + 1]} /> : null}
           </article>
         ))}
       </div>
@@ -489,8 +540,9 @@ function IssuesPanel({ page }: { page: CampaignPage }) {
   return (
     <section className="issues-bento stitch-container">
       <article className="issue-bento-card issue-bento-image">
-        <Image
-          src={withBasePath(page.images[1].src)}
+        <EditableImage
+          id="issues.featured.image"
+          fallback={page.images[1].src}
           alt={page.images[1].alt}
           fill
           loading="eager"
@@ -499,19 +551,21 @@ function IssuesPanel({ page }: { page: CampaignPage }) {
         />
         <div>
           <span className="material-chip">school</span>
-          <p className="section-pill">Priority</p>
-          <h2>Education</h2>
-          <p>
-            Investing heavily in early childhood education and modernizing public school infrastructure.
-          </p>
+          <EditableText id="issues.featured.kicker" className="section-pill" fallback="Priority" as="p" />
+          <EditableText id="issues.featured.title" fallback="Education" as="h2" />
+          <EditableText
+            id="issues.featured.summary"
+            fallback="Investing heavily in early childhood education and modernizing public school infrastructure."
+            as="p"
+          />
           <Link href="/contact">Learn More <span aria-hidden="true">→</span></Link>
         </div>
       </article>
-      {issueCards.slice(1).map((issue) => (
+      {issueCards.slice(1).map((issue, index) => (
         <article key={issue.title} className={issue.dark ? "issue-bento-card dark-card" : "issue-bento-card"}>
           <span className="material-chip">{issue.icon}</span>
-          <h3>{issue.title}</h3>
-          <p>{issue.summary}</p>
+          <EditableText id={`issues.card.${index}.title`} fallback={issue.title} as="h3" />
+          <EditableText id={`issues.card.${index}.summary`} fallback={issue.summary} as="p" />
           <Link href="/contact">Learn More <span aria-hidden="true">→</span></Link>
         </article>
       ))}
@@ -525,8 +579,8 @@ function EventsPanel({ page }: { page: CampaignPage }) {
       <section className="events-section stitch-container">
         <div className="section-row">
           <div>
-            <h2>Upcoming Events</h2>
-            <p>Featured campaign stops and public gatherings.</p>
+            <EditableText id="events.upcoming.title" fallback="Upcoming Events" as="h2" />
+            <EditableText id="events.upcoming.summary" fallback="Featured campaign stops and public gatherings." as="p" />
           </div>
           <div className="circle-controls" aria-hidden="true">
             <span>chevron_left</span>
@@ -534,21 +588,25 @@ function EventsPanel({ page }: { page: CampaignPage }) {
           </div>
         </div>
         <div className="events-grid">
-          <ImageCard image={page.images[2]} />
+          <ImageCard id="events.featured.image" image={page.images[2]} />
           {eventCards.map((event, index) => (
             <article key={event.title} className={index === 0 ? "event-card wide" : "event-card"}>
-              <p className="section-pill">{event.type}</p>
-              <time>{event.date}</time>
-              <h3>{event.title}</h3>
-              <p>{event.location}</p>
-              <button type="button">{event.action}</button>
+              <EditableText id={`events.card.${index}.type`} className="section-pill" fallback={event.type} as="p" />
+              <EditableText id={`events.card.${index}.date`} fallback={event.date} as="time" />
+              <EditableText id={`events.card.${index}.title`} fallback={event.title} as="h3" />
+              <EditableText id={`events.card.${index}.location`} fallback={event.location} as="p" />
+              <button type="button" {...stableRegionProps(`events.card.${index}.action`, "link")}>{event.action}</button>
             </article>
           ))}
           <article className="event-card parade-card">
-            <p className="section-pill">Community</p>
-            <h3>Fall Harvest Festival Parade</h3>
-            <p>Carmen and the team will be marching in the annual parade. Join our volunteer wave.</p>
-            <Link className="button button-light" href="/volunteer">
+            <EditableText id="events.parade.kicker" className="section-pill" fallback="Community" as="p" />
+            <EditableText id="events.parade.title" fallback="Fall Harvest Festival Parade" as="h3" />
+            <EditableText
+              id="events.parade.summary"
+              fallback="Carmen and the team will be marching in the annual parade. Join our volunteer wave."
+              as="p"
+            />
+            <Link className="button button-light" href="/volunteer" {...stableRegionProps("events.parade.link", "link")}>
               Join Volunteers
             </Link>
           </article>
@@ -557,11 +615,15 @@ function EventsPanel({ page }: { page: CampaignPage }) {
       <section className="calendar-band">
         <div className="stitch-container calendar-grid">
           <div>
-            <h2>Full Calendar</h2>
-            <p>We are across the district every day. View upcoming canvasses, community stops, and meetings.</p>
+            <EditableText id="events.calendar.title" fallback="Full Calendar" as="h2" />
+            <EditableText
+              id="events.calendar.summary"
+              fallback="We are across the district every day. View upcoming canvasses, community stops, and meetings."
+              as="p"
+            />
           </div>
           <div className="calendar-card">
-            <h3>November {siteConfig.year}</h3>
+            <EditableText id="events.calendar.month" fallback={`November ${siteConfig.year}`} as="h3" />
             <div className="calendar-days">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                 <strong key={day}>{day}</strong>
@@ -584,10 +646,10 @@ function EndorsementsPanel({ page }: { page: CampaignPage }) {
     <section className="endorsement-section stitch-container">
       {page.sections.map((section, index) => (
         <article key={section.title} className="endorsement-card">
-          <ImageCard image={page.images[index + 1] ?? page.images[0]} />
-          <p className="section-pill">{section.kicker}</p>
-          <h3>{section.title}</h3>
-          <p>{section.body}</p>
+          <ImageCard id={`endorsements.card.${index}.image`} image={page.images[index + 1] ?? page.images[0]} />
+          <EditableText id={`endorsements.card.${index}.kicker`} className="section-pill" fallback={section.kicker ?? ""} as="p" />
+          <EditableText id={`endorsements.card.${index}.title`} fallback={section.title} as="h3" />
+          <EditableText id={`endorsements.card.${index}.body`} fallback={section.body} as="p" />
         </article>
       ))}
     </section>
@@ -599,11 +661,11 @@ function NewsPanel({ page }: { page: CampaignPage }) {
     <section className="news-section stitch-container">
       {page.sections.map((section, index) => (
         <article key={section.title} className="news-card">
-          <ImageCard image={page.images[index + 1] ?? page.images[0]} />
+          <ImageCard id={`news.card.${index}.image`} image={page.images[index + 1] ?? page.images[0]} />
           <div>
-            <p className="section-pill">{section.kicker}</p>
-            <h3>{section.title}</h3>
-            <p>{section.body}</p>
+            <EditableText id={`news.card.${index}.kicker`} className="section-pill" fallback={section.kicker ?? ""} as="p" />
+            <EditableText id={`news.card.${index}.title`} fallback={section.title} as="h3" />
+            <EditableText id={`news.card.${index}.body`} fallback={section.body} as="p" />
           <Link href="/contact">Read Update <span aria-hidden="true">→</span></Link>
           </div>
         </article>
@@ -616,12 +678,13 @@ function ContactPanel() {
   return (
     <section className="form-section stitch-container">
       <div>
-        <p className="section-kicker">Contact</p>
-        <h2>Send a note to the campaign.</h2>
-        <p>
-          This public preview keeps the form static. The markup is ready for a future database insert or
-          email workflow when the final backend is approved.
-        </p>
+        <EditableText id="contact.form.kicker" className="section-kicker" fallback="Contact" as="p" />
+        <EditableText id="contact.form.title" fallback="Send a note to the campaign." as="h2" />
+        <EditableText
+          id="contact.form.summary"
+          fallback="This public preview keeps the form static. The markup is ready for a future database insert or email workflow when the final backend is approved."
+          as="p"
+        />
       </div>
       <CampaignForm buttonLabel="Send Message" />
     </section>
@@ -632,9 +695,13 @@ function VolunteerPanel() {
   return (
     <section className="form-section stitch-container">
       <div>
-        <p className="section-kicker">Volunteer Signup</p>
-        <h2>Tell the team how you want to help.</h2>
-        <p>Choose a field role, event role, or hosting opportunity and the campaign can connect this form to the final backend later.</p>
+        <EditableText id="volunteer.form.kicker" className="section-kicker" fallback="Volunteer Signup" as="p" />
+        <EditableText id="volunteer.form.title" fallback="Tell the team how you want to help." as="h2" />
+        <EditableText
+          id="volunteer.form.summary"
+          fallback="Choose a field role, event role, or hosting opportunity and the campaign can connect this form to the final backend later."
+          as="p"
+        />
       </div>
       <CampaignForm buttonLabel="Sign Up" includeInterest />
     </section>
@@ -645,20 +712,21 @@ function DonatePanel() {
   return (
     <section className="donate-panel stitch-container">
       <div>
-        <p className="section-kicker">Secure Contribution</p>
-        <h2>Choose an amount.</h2>
+        <EditableText id="donate.panel.kicker" className="section-kicker" fallback="Secure Contribution" as="p" />
+        <EditableText id="donate.panel.title" fallback="Choose an amount." as="h2" />
       </div>
       <div className="amount-grid">
         {donationAmounts.map((amount) => (
-          <button type="button" key={amount}>
+          <button type="button" key={amount} {...stableRegionProps(`donate.amount.${amount}`, "text")}>
             ${amount}
           </button>
         ))}
       </div>
-      <p>
-        Final donation processing should connect to the campaign's compliance-approved donation provider after
-        domains and payment setup are confirmed.
-      </p>
+      <EditableText
+        id="donate.panel.summary"
+        fallback="Final donation processing should connect to the campaign's compliance-approved donation provider after domains and payment setup are confirmed."
+        as="p"
+      />
     </section>
   );
 }
@@ -696,26 +764,28 @@ function CampaignForm({
           <textarea name="message" rows={5} />
         </label>
       )}
-      <button className="button button-action" type="button">
+      <button className="button button-action" type="button" {...stableRegionProps(`form.${buttonLabel.replace(/\s+/g, "-").toLowerCase()}.button`, "link")}>
         {buttonLabel}
       </button>
     </form>
   );
 }
 
-function MovementSignup({ title, body }: { title: string; body: string }) {
+function MovementSignup({ title, body, regionPrefix }: { title: string; body: string; regionPrefix: string }) {
   return (
     <section className="movement-section">
       <div className="stitch-container">
         <span className="material-chip inverted">campaign</span>
-        <h2>{title}</h2>
-        <p>{body}</p>
+        <EditableText id={`${regionPrefix}.signup.title`} fallback={title} as="h2" />
+        <EditableText id={`${regionPrefix}.signup.body`} fallback={body} as="p" />
         <form className="inline-form">
           <label className="sr-only" htmlFor="signup-email">
             Email Address
           </label>
           <input id="signup-email" type="email" placeholder="Email Address" autoComplete="email" />
-          <button type="button">Subscribe</button>
+          <button type="button" {...stableRegionProps(`${regionPrefix}.signup.button`, "link")}>
+            Subscribe
+          </button>
         </form>
       </div>
     </section>
@@ -725,26 +795,33 @@ function MovementSignup({ title, body }: { title: string; body: string }) {
 function MiniPriority({
   title,
   icon,
+  id,
   dark = false,
 }: {
   title: string;
   icon: string;
+  id: string;
   dark?: boolean;
 }) {
   return (
     <article className={dark ? "mini-priority dark-card" : "mini-priority"}>
       <span className="material-chip">{icon}</span>
-      <h3>{title}</h3>
-      <p>Transparent, accountable, district-first leadership in every decision.</p>
+      <EditableText id={`${id}.title`} fallback={title} as="h3" />
+      <EditableText
+        id={`${id}.summary`}
+        fallback="Transparent, accountable, district-first leadership in every decision."
+        as="p"
+      />
     </article>
   );
 }
 
-function SmallIssue({ image, title }: { image: CampaignImage; title: string }) {
+function SmallIssue({ id, image, title }: { id: string; image: CampaignImage; title: string }) {
   return (
     <article className="small-issue">
-      <Image
-        src={withBasePath(image.src)}
+      <EditableImage
+        id={`${id}.image`}
+        fallback={image.src}
         alt={image.alt}
         width={160}
         height={120}
@@ -752,19 +829,24 @@ function SmallIssue({ image, title }: { image: CampaignImage; title: string }) {
         style={imageFocusStyle(image)}
       />
       <div>
-        <p className="section-pill">Priority</p>
-        <h3>{title}</h3>
-        <p>Practical plans for working families and seniors across the district.</p>
+        <EditableText id={`${id}.kicker`} className="section-pill" fallback="Priority" as="p" />
+        <EditableText id={`${id}.title`} fallback={title} as="h3" />
+        <EditableText
+          id={`${id}.summary`}
+          fallback="Practical plans for working families and seniors across the district."
+          as="p"
+        />
       </div>
     </article>
   );
 }
 
-function ImageCard({ image }: { image: CampaignImage }) {
+function ImageCard({ id, image }: { id: string; image: CampaignImage }) {
   return (
     <figure className="image-card">
-      <Image
-        src={withBasePath(image.src)}
+      <EditableImage
+        id={id}
+        fallback={image.src}
         alt={image.alt}
         width={1200}
         height={900}

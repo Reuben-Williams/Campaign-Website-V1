@@ -314,6 +314,16 @@ function elementKind(element: Element): EditableKind {
 }
 
 function editableElements() {
+  const stableRegions = Array.from(document.querySelectorAll<HTMLElement>("[data-builder-region]")).filter((element) => {
+    if (element.closest(".demo-editor-ui")) return false;
+    if (element.closest(".mobile-bottom-nav")) return false;
+    if (element.matches("script, style, noscript")) return false;
+    if (element.dataset.builderKind !== "image" && !element.textContent?.trim()) return false;
+    return true;
+  });
+
+  if (stableRegions.length > 0) return stableRegions;
+
   return Array.from(document.querySelectorAll<HTMLElement>(editSelector)).filter((element) => {
     if (element.closest(".demo-editor-ui")) return false;
     if (element.closest(".mobile-bottom-nav")) return false;
@@ -327,6 +337,14 @@ function assignEditableKeys() {
   const counts = new Map<string, number>();
 
   editableElements().forEach((element) => {
+    const stableRegion = element.dataset.builderRegion;
+    const stableKind = element.dataset.builderKind as EditableKind | undefined;
+    if (stableRegion && stableKind) {
+      element.dataset.demoEditableKey = stableRegion;
+      element.dataset.demoEditableKind = stableKind;
+      return;
+    }
+
     const kind = elementKind(element);
     const base = `${normalizedPath()}:${kind}:${element.tagName.toLowerCase()}`;
     const count = counts.get(base) ?? 0;
@@ -405,6 +423,21 @@ export function StaticSiteEditor() {
   }
 
   useEffect(() => {
+    const currentUrl = new URL(window.location.href);
+    const searchParams = currentUrl.searchParams;
+    const isPreviewFrame = searchParams.get("builderPreview") === "1";
+    const isEditorRoute = currentUrl.pathname.endsWith("/admin/editor") || currentUrl.pathname.endsWith("/admin/editor/");
+
+    if (searchParams.get("builderExit") === "1") {
+      window.sessionStorage.removeItem(editorSessionKey);
+    }
+    if (isEditorRoute && !isPreviewFrame) return;
+    if (isPreviewFrame) {
+      document.body.classList.add("builder-preview-frame");
+      setActive(true);
+      setStatus("Demo editor active. Click text or images to edit.");
+    }
+
     applyStoredEdits();
     setAuditEvents(readAuditLog());
     let timeout: number | undefined;
@@ -418,15 +451,15 @@ export function StaticSiteEditor() {
       setLoginOpen(true);
     }
 
-    if (window.sessionStorage.getItem(editorSessionKey) === "true") {
-      setActive(true);
-      setStatus("Demo editor active. Click text or images to edit.");
+    if (!isPreviewFrame && !isEditorRoute && window.sessionStorage.getItem(editorSessionKey) === "true") {
+      window.location.assign(`${siteBasePath()}/admin/editor/`);
     }
 
     window.addEventListener("campaign-editor:open-login", openLogin);
     return () => {
       window.clearTimeout(timeout);
       observer.disconnect();
+      document.body.classList.remove("builder-preview-frame");
       window.removeEventListener("campaign-editor:open-login", openLogin);
     };
   }, []);
@@ -545,8 +578,7 @@ export function StaticSiteEditor() {
     event.preventDefault();
     window.sessionStorage.setItem(editorSessionKey, "true");
     setLoginOpen(false);
-    setActive(true);
-    setStatus("Demo editor active. Click text or images to edit.");
+    window.location.assign(`${siteBasePath()}/admin/editor/`);
   }
 
   function closeLoginFromBackdrop(event: ReactMouseEvent<HTMLDivElement>) {

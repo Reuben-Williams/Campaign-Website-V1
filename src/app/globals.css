@@ -274,6 +274,11 @@ textarea {
   object-fit: cover;
 }
 
+.hero-bg-frame {
+  position: absolute;
+  inset: 0;
+}
+
 .home-hero .hero-bg {
   object-position: center 28%;
 }
@@ -1367,7 +1372,7 @@ select:focus {
   }
 }
 
-[data-builder-region] {
+body.demo-editor-active [data-builder-region] {
   outline: 3px dashed rgba(20, 184, 166, 0.85);
   outline-offset: 6px;
   cursor: pointer;
@@ -2139,6 +2144,24 @@ body.demo-editor-active .mobile-bottom-nav {
 
 body.demo-editor-active .hero-scrim {
   pointer-events: none;
+}
+
+body.builder-preview-frame.demo-editor-active {
+  background: var(--background, #ffffff);
+}
+
+body.builder-preview-frame .demo-editor-toolbar {
+  display: none !important;
+}
+
+body.builder-preview-frame.demo-editor-active .site-header,
+body.builder-preview-frame.demo-editor-active .page-shell,
+body.builder-preview-frame.demo-editor-active .site-footer {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  transform: none;
+  box-shadow: none;
 }
 
 @media (max-width: 760px) {
