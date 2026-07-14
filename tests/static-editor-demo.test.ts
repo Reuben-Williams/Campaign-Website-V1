@@ -308,4 +308,35 @@ describe("GitHub Pages editor demo", () => {
     expect(styles).toContain(".demo-active-edit-region");
     expect(styles).toContain("rgba(37, 99, 235, 0.9)");
   });
+
+  it("keeps the multi-select linking panel fully inside the viewport", () => {
+    const staticEditor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+    const styles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(staticEditor).toContain("linkPanelRef");
+    expect(staticEditor).toContain("linkPanelRef.current.getBoundingClientRect()");
+    expect(staticEditor).toContain("window.innerHeight - rect.height - 12");
+    expect(staticEditor).toContain("setLinkPanel({ ...linkPanel, x: nextX, y: nextY })");
+    expect(styles).toContain(".demo-multi-select-panel");
+    expect(styles).toContain("max-height: calc(100vh - 24px)");
+    expect(styles).toContain("overflow: auto");
+  });
+
+  it("provides rich text controls for selected words and element shadows", () => {
+    const staticEditor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+    const styles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(staticEditor).toContain("contentEditable");
+    expect(staticEditor).toContain("applyRichTextCommand");
+    expect(staticEditor).toContain('applyRichTextCommand("bold")');
+    expect(staticEditor).toContain('applyRichTextCommand("italic")');
+    expect(staticEditor).toContain('applyRichTextCommand("foreColor"');
+    expect(staticEditor).toContain('applyRichTextCommand("hiliteColor"');
+    expect(staticEditor).toContain('applyRichTextCommand("createLink"');
+    expect(staticEditor).toContain("textShadow");
+    expect(staticEditor).toContain("buttonBoxShadow");
+    expect(styles).toContain(".demo-rich-text-toolbar");
+    expect(styles).toContain(".demo-rich-text-editor");
+    expect(styles).toContain(".demo-style-grid");
+  });
 });

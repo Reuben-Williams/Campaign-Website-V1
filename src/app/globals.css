@@ -1615,6 +1615,7 @@ body.demo-editor-active [data-builder-region] {
 .demo-login-modal input,
 .demo-context-menu input,
 .demo-context-menu textarea,
+.demo-context-menu select,
 .demo-multi-select-panel input,
 .demo-multi-select-panel select {
   width: 100%;
@@ -1629,6 +1630,79 @@ body.demo-editor-active [data-builder-region] {
 .demo-context-menu textarea {
   min-height: 96px;
   resize: vertical;
+}
+
+.demo-rich-text-section {
+  display: grid;
+  gap: 10px;
+}
+
+.demo-field-label {
+  color: #344054;
+  font-weight: 900;
+}
+
+.demo-rich-text-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  border: 1px solid #d8dee8;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 8px;
+}
+
+.demo-rich-text-toolbar button,
+.demo-rich-text-toolbar label {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2937;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 950;
+  line-height: 1;
+  padding: 7px 9px;
+}
+
+.demo-rich-text-toolbar input[type="color"] {
+  width: 24px;
+  height: 24px;
+  min-height: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.demo-rich-text-editor {
+  min-height: 116px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111827;
+  line-height: 1.45;
+  outline: none;
+  padding: 10px 12px;
+}
+
+.demo-rich-text-editor:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+.demo-style-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .demo-selected-image-preview {
@@ -1673,6 +1747,15 @@ body.demo-editor-active [data-builder-region] {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.demo-context-actions {
+  position: sticky;
+  bottom: -14px;
+  margin: 0 -14px -14px;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+  padding: 10px 14px 14px;
 }
 
 .demo-login-actions button,
@@ -1973,6 +2056,8 @@ body.demo-editor-active [data-builder-region] {
   position: fixed;
   z-index: 300;
   width: min(350px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow: auto;
   display: grid;
   gap: 12px;
   border: 1px solid rgba(15, 23, 42, 0.14);

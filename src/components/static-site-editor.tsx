@@ -16,9 +16,9 @@ import { editorPostPlaceholders } from "@/generated/editor-posts";
 type EditableKind = "text" | "image" | "link";
 
 type StoredEdit =
-  | { kind: "text"; text: string }
+  | { kind: "text"; text: string; html?: string; textShadow?: string }
   | { kind: "image"; src: string; alt: string }
-  | { kind: "link"; text: string; href: string };
+  | { kind: "link"; text: string; href: string; html?: string; textShadow?: string; boxShadow?: string };
 
 type MenuState = {
   key: string;
@@ -26,7 +26,13 @@ type MenuState = {
   x: number;
   y: number;
   text: string;
+  html: string;
   href: string;
+  linkUrl: string;
+  textColor: string;
+  highlightColor: string;
+  textShadow: string;
+  buttonBoxShadow: string;
   src: string;
   alt: string;
 };
@@ -401,11 +407,14 @@ function elementEditValue(element: HTMLElement, kind: EditableKind): StoredEdit 
     return {
       kind: "link",
       text: element.textContent?.trim() ?? "",
+      html: element.innerHTML,
       href: element instanceof HTMLAnchorElement ? element.getAttribute("href") ?? "" : "",
+      textShadow: element.style.textShadow,
+      boxShadow: element.style.boxShadow,
     };
   }
 
-  return { kind: "text", text: element.textContent?.trim() ?? "" };
+  return { kind: "text", text: element.textContent?.trim() ?? "", html: element.innerHTML, textShadow: element.style.textShadow };
 }
 
 function makeAuditEvent(input: Omit<AuditEvent, "id" | "changedAt" | "summary" | "userLabel">): AuditEvent {
@@ -478,11 +487,16 @@ function applyStoredEdits() {
     if (!edit) return;
 
     if (edit.kind === "text") {
-      element.textContent = edit.text;
+      if (edit.html) element.innerHTML = edit.html;
+      else element.textContent = edit.text;
+      element.style.textShadow = edit.textShadow ?? "";
     }
 
     if (edit.kind === "link") {
-      element.textContent = edit.text;
+      if (edit.html) element.innerHTML = edit.html;
+      else element.textContent = edit.text;
+      element.style.textShadow = edit.textShadow ?? "";
+      element.style.boxShadow = edit.boxShadow ?? "";
       if (element instanceof HTMLAnchorElement) {
         element.href = edit.href;
       }
@@ -547,6 +561,9 @@ export function StaticSiteEditor() {
   const [status, setStatus] = useState("Demo edits save in this browser only.");
   const selectedElement = useRef<HTMLElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const linkPanelRef = useRef<HTMLDivElement | null>(null);
+  const richTextRef = useRef<HTMLDivElement | null>(null);
+  const richSelectionRef = useRef<Range | null>(null);
   const pointerMenuActionHandled = useRef(false);
   const selectedRegionsRef = useRef<SelectedRegionBinding[]>([]);
   const galleryAssets = useMemo(() => {
@@ -601,7 +618,13 @@ export function StaticSiteEditor() {
       x: Math.min(clientX, window.innerWidth - 340),
       y: Math.min(clientY, window.innerHeight - 260),
       text: element.textContent?.trim() ?? "",
+      html: element.innerHTML,
       href: element instanceof HTMLAnchorElement ? element.getAttribute("href") ?? "" : "",
+      linkUrl: element instanceof HTMLAnchorElement ? element.getAttribute("href") ?? "https://" : "https://",
+      textColor: "#111827",
+      highlightColor: "#fef3c7",
+      textShadow: element.style.textShadow,
+      buttonBoxShadow: element.style.boxShadow,
       src: element instanceof HTMLImageElement ? element.getAttribute("src") ?? "" : "",
       alt: element instanceof HTMLImageElement ? element.alt : "",
     });
@@ -892,6 +915,18 @@ export function StaticSiteEditor() {
     }
   }, [menu]);
 
+  useEffect(() => {
+    if (!linkPanel || !linkPanelRef.current) return;
+
+    const rect = linkPanelRef.current.getBoundingClientRect();
+    const nextX = Math.max(12, Math.min(linkPanel.x, window.innerWidth - rect.width - 12));
+    const nextY = Math.max(12, Math.min(linkPanel.y, window.innerHeight - rect.height - 12));
+
+    if (Math.abs(nextX - linkPanel.x) > 1 || Math.abs(nextY - linkPanel.y) > 1) {
+      setLinkPanel({ ...linkPanel, x: nextX, y: nextY });
+    }
+  }, [linkPanel]);
+
   function enterEditor(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     window.sessionStorage.setItem(editorSessionKey, "true");
@@ -910,25 +945,72 @@ export function StaticSiteEditor() {
     setActive(false);
   }
 
+  function syncRichTextFromEditor() {
+    if (!menu || !richTextRef.current) return;
+    setMenu({ ...menu, html: richTextRef.current.innerHTML, text: richTextRef.current.innerText.trim() });
+  }
+
+  function rememberRichTextSelection() {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || !richTextRef.current) return;
+
+    const range = selection.getRangeAt(0);
+    if (richTextRef.current.contains(range.commonAncestorContainer)) {
+      richSelectionRef.current = range.cloneRange();
+    }
+  }
+
+  function restoreRichTextSelection() {
+    richTextRef.current?.focus();
+    const selection = window.getSelection();
+    if (!selection || !richSelectionRef.current) return;
+    selection.removeAllRanges();
+    selection.addRange(richSelectionRef.current);
+  }
+
+  function applyRichTextCommand(command: string, value?: string) {
+    restoreRichTextSelection();
+    document.execCommand(command, false, value);
+    syncRichTextFromEditor();
+    rememberRichTextSelection();
+  }
+
+  function updateMenuStyle(next: Partial<Pick<MenuState, "textShadow" | "buttonBoxShadow" | "textColor" | "highlightColor" | "linkUrl">>) {
+    if (!menu) return;
+    setMenu({ ...menu, ...next });
+  }
+
   function saveMenuEdit() {
     if (!menu || !selectedElement.current) return;
     const element = selectedElement.current;
     const pagePath = normalizedPath();
     const oldValue = elementEditValue(element, menu.kind);
     let newValue: StoredEdit | null = null;
+    const richHtml = richTextRef.current?.innerHTML ?? menu.html;
+    const richText = richTextRef.current?.innerText.trim() ?? menu.text;
 
     if (menu.kind === "text") {
-      element.textContent = menu.text;
-      newValue = { kind: "text", text: menu.text };
+      element.innerHTML = richHtml;
+      element.style.textShadow = menu.textShadow;
+      newValue = { kind: "text", text: richText, html: richHtml, textShadow: menu.textShadow };
       writeEdit(menu.key, newValue);
     }
 
     if (menu.kind === "link") {
-      element.textContent = menu.text;
+      element.innerHTML = richHtml;
+      element.style.textShadow = menu.textShadow;
+      element.style.boxShadow = menu.buttonBoxShadow;
       if (element instanceof HTMLAnchorElement) {
         element.href = menu.href;
       }
-      newValue = { kind: "link", text: menu.text, href: menu.href };
+      newValue = {
+        kind: "link",
+        text: richText,
+        html: richHtml,
+        href: menu.href,
+        textShadow: menu.textShadow,
+        boxShadow: menu.buttonBoxShadow,
+      };
       writeEdit(menu.key, newValue);
     }
 
@@ -1169,8 +1251,9 @@ export function StaticSiteEditor() {
 
       {linkPanel && selectedRegions.length > 0 ? (
         <div
+          ref={linkPanelRef}
           className="demo-editor-ui demo-multi-select-panel"
-          style={{ left: linkPanel.x, top: linkPanel.y }}
+          style={{ left: linkPanel.x, top: linkPanel.y, maxHeight: "calc(100vh - 24px)" }}
           role="dialog"
           aria-label="Link selected content"
         >
@@ -1244,14 +1327,91 @@ export function StaticSiteEditor() {
         <div
           ref={menuRef}
           className="demo-editor-ui demo-context-menu"
-          style={{ left: menu.x, top: menu.y, maxHeight: `calc(100vh - ${menu.y + 12}px)` }}
+          style={{ left: menu.x, top: menu.y, maxHeight: "calc(100vh - 24px)" }}
         >
           <p className="demo-kicker">{menu.kind} tools</p>
           {(menu.kind === "text" || menu.kind === "link") && (
-            <label>
-              Text
-              <textarea value={menu.text} onChange={(event) => setMenu({ ...menu, text: event.target.value })} />
-            </label>
+            <div className="demo-rich-text-section">
+              <span className="demo-field-label">Text</span>
+              <div className="demo-rich-text-toolbar" role="toolbar" aria-label="Text formatting">
+                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyRichTextCommand("bold")}>
+                  B
+                </button>
+                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyRichTextCommand("italic")}>
+                  I
+                </button>
+                <label title="Text color">
+                  <span>Color</span>
+                  <input
+                    type="color"
+                    value={menu.textColor}
+                    onChange={(event) => {
+                      updateMenuStyle({ textColor: event.target.value });
+                      applyRichTextCommand("foreColor", event.target.value);
+                    }}
+                  />
+                </label>
+                <label title="Highlight color">
+                  <span>Highlight</span>
+                  <input
+                    type="color"
+                    value={menu.highlightColor}
+                    onChange={(event) => {
+                      updateMenuStyle({ highlightColor: event.target.value });
+                      applyRichTextCommand("hiliteColor", event.target.value);
+                    }}
+                  />
+                </label>
+                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyRichTextCommand("createLink", menu.linkUrl)}>
+                  Link
+                </button>
+                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyRichTextCommand("unlink")}>
+                  Unlink
+                </button>
+              </div>
+              <div
+                key={menu.key}
+                ref={richTextRef}
+                className="demo-rich-text-editor"
+                contentEditable
+                suppressContentEditableWarning
+                role="textbox"
+                aria-label="Editable formatted text"
+                onInput={() => {
+                  syncRichTextFromEditor();
+                  rememberRichTextSelection();
+                }}
+                onMouseUp={rememberRichTextSelection}
+                onKeyUp={rememberRichTextSelection}
+                dangerouslySetInnerHTML={{ __html: menu.html }}
+              />
+              <label>
+                Link for selected words
+                <input value={menu.linkUrl} onChange={(event) => setMenu({ ...menu, linkUrl: event.target.value })} placeholder="https://example.com" />
+              </label>
+              <div className="demo-style-grid">
+                <label>
+                  Text shadow
+                  <select value={menu.textShadow} onChange={(event) => updateMenuStyle({ textShadow: event.target.value })}>
+                    <option value="">None</option>
+                    <option value="0 1px 2px rgba(15, 23, 42, 0.28)">Soft</option>
+                    <option value="0 2px 8px rgba(15, 23, 42, 0.35)">Medium</option>
+                    <option value="0 3px 14px rgba(15, 23, 42, 0.45)">Strong</option>
+                  </select>
+                </label>
+                {menu.kind === "link" ? (
+                  <label>
+                    Button shadow
+                    <select value={menu.buttonBoxShadow} onChange={(event) => updateMenuStyle({ buttonBoxShadow: event.target.value })}>
+                      <option value="">None</option>
+                      <option value="0 8px 18px rgba(15, 23, 42, 0.16)">Soft</option>
+                      <option value="0 12px 28px rgba(15, 23, 42, 0.22)">Lifted</option>
+                      <option value="0 16px 38px rgba(187, 0, 31, 0.28)">Campaign glow</option>
+                    </select>
+                  </label>
+                ) : null}
+              </div>
+            </div>
           )}
           {menu.kind === "link" && (
             <label>
