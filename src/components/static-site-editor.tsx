@@ -6,9 +6,12 @@ import {
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
+import { editorMediaAssets } from "@/generated/editor-media-assets";
+import { editorPostPlaceholders } from "@/generated/editor-posts";
 
 type EditableKind = "text" | "image" | "link";
 
@@ -43,7 +46,34 @@ type MediaAsset = {
   alt: string;
   label: string;
   mimeType: string;
+  path?: string;
   source: "seed" | "upload";
+};
+
+type EditorPost = {
+  id: string;
+  title: string;
+  slug: string;
+  status: "draft" | "scheduled" | "published" | "archived";
+  excerpt: string;
+  imagePath: string;
+  source: "site-scan" | "manual";
+  sourcePagePath: string;
+  linkedRegionIds: readonly string[];
+};
+
+type SelectedRegionBinding = {
+  key: string;
+  kind: EditableKind;
+  label: string;
+};
+
+type LinkPanelState = {
+  x: number;
+  y: number;
+  url: string;
+  pagePath: string;
+  postId: string;
 };
 
 type AuditEvent = {
@@ -64,6 +94,10 @@ const editorSessionKey = "campaign-v1-static-editor-active";
 const historyStorageKey = `${editStoragePrefix}:history`;
 const historyMessageType = `${editStoragePrefix}:history-updated`;
 const historyRequestMessageType = `${editStoragePrefix}:history-request`;
+const historyRollbackRequestMessageType = `${editStoragePrefix}:rollback-request`;
+const favoriteMediaStorageKey = "campaign-v1-editor:favorite-media";
+const postsStorageKey = "campaign-v1-editor:posts";
+const linkStorageKey = `${editStoragePrefix}:links`;
 const editSelector =
   "main h1, main h2, main h3, main p, main blockquote, main a, main button, main time, main strong, main small, main span, footer p, footer a, header a, header nav a, img";
 
@@ -210,8 +244,71 @@ const pageOptions = [
   { label: "Donate", path: "/donate" },
 ];
 
+const projectGalleryAssets: MediaAsset[] = editorMediaAssets.map((asset) => ({
+  id: asset.id,
+  src: asset.path,
+  alt: asset.alt,
+  label: asset.label,
+  mimeType: asset.mimeType,
+  path: asset.path,
+  source: "seed",
+}));
+
 function siteBasePath() {
   return window.location.pathname.startsWith("/Campaign-Website-V1") ? "/Campaign-Website-V1" : "";
+}
+
+function readFavoriteMediaIds() {
+  if (typeof window === "undefined") return new Set<string>();
+
+  try {
+    const ids = JSON.parse(window.localStorage.getItem(favoriteMediaStorageKey) ?? "[]") as string[];
+    return new Set(Array.isArray(ids) ? ids : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function writeFavoriteMediaIds(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(favoriteMediaStorageKey, JSON.stringify(Array.from(ids)));
+}
+
+function readStoredPosts(): EditorPost[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(postsStorageKey) ?? "[]") as EditorPost[];
+    return Array.isArray(stored) ? stored : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredPosts(posts: EditorPost[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(postsStorageKey, JSON.stringify(posts));
+  window.parent.postMessage({ type: "campaign-v1-editor:posts-updated" }, window.location.origin);
+}
+
+function readLinkBindings(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+
+  try {
+    return JSON.parse(window.localStorage.getItem(linkStorageKey) ?? "{}") as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function writeLinkBindings(bindings: Record<string, string>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(linkStorageKey, JSON.stringify(bindings));
+}
+
+function regionLabel(element: HTMLElement) {
+  if (element instanceof HTMLImageElement) return element.alt || "Image";
+  return element.textContent?.trim().slice(0, 64) || element.dataset.demoEditableKey || "Selected content";
 }
 
 function withSiteBasePath(src: string) {
@@ -397,6 +494,27 @@ function applyStoredEdits() {
       element.alt = edit.alt;
     }
   });
+  applyLinkBindings();
+}
+
+function applyLinkBindings() {
+  const bindings = readLinkBindings();
+
+  editableElements().forEach((element) => {
+    const key = element.dataset.demoEditableKey;
+    if (!key) return;
+    const href = bindings[key];
+    element.classList.toggle("demo-selected-link-region", Boolean(href));
+    if (!href) {
+      delete element.dataset.demoLinkedHref;
+      return;
+    }
+
+    element.dataset.demoLinkedHref = href;
+    if (element instanceof HTMLAnchorElement) {
+      element.setAttribute("href", href);
+    }
+  });
 }
 
 export function StaticSiteEditor() {
@@ -408,18 +526,38 @@ export function StaticSiteEditor() {
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [imageTargets, setImageTargets] = useState<ImageTargetState[]>([]);
   const [uploadedGalleryAssets, setUploadedGalleryAssets] = useState<MediaAsset[]>([]);
+  const [favoriteMediaIds, setFavoriteMediaIds] = useState<Set<string>>(() => readFavoriteMediaIds());
+  const [selectedRegions, setSelectedRegions] = useState<SelectedRegionBinding[]>([]);
+  const [linkPanel, setLinkPanel] = useState<LinkPanelState | null>(null);
+  const [createdPosts, setCreatedPosts] = useState<EditorPost[]>(() => readStoredPosts());
   const [status, setStatus] = useState("Demo edits save in this browser only.");
   const selectedElement = useRef<HTMLElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pointerMenuActionHandled = useRef(false);
-  const galleryAssets = [...uploadedGalleryAssets, ...staticGalleryAssets];
+  const galleryAssets = useMemo(() => {
+    const merged = [...uploadedGalleryAssets, ...projectGalleryAssets, ...staticGalleryAssets];
+    const uniqueAssets = merged.filter((asset, index, assets) => assets.findIndex((item) => item.src === asset.src) === index);
+    return uniqueAssets.sort((a, b) => Number(favoriteMediaIds.has(b.id)) - Number(favoriteMediaIds.has(a.id)));
+  }, [favoriteMediaIds, uploadedGalleryAssets]);
+  const availablePosts = useMemo(() => {
+    const storedIds = new Set(createdPosts.map((post) => post.id));
+    return [
+      ...createdPosts,
+      ...editorPostPlaceholders.filter((post) => !storedIds.has(post.id)),
+    ] as EditorPost[];
+  }, [createdPosts]);
 
   useEffect(() => {
     function respondWithAuditLog(event: MessageEvent) {
       if (event.origin !== window.location.origin) return;
-      const message = event.data as { type?: unknown };
-      if (message.type !== historyRequestMessageType) return;
-      notifyParentOfAuditEvents(readAuditLog());
+      const message = event.data as { type?: unknown; eventId?: unknown };
+      if (message.type === historyRequestMessageType) {
+        notifyParentOfAuditEvents(readAuditLog());
+      }
+      if (message.type === historyRollbackRequestMessageType && typeof message.eventId === "string") {
+        const targetEvent = readAuditLog().find((eventItem) => eventItem.id === message.eventId);
+        if (targetEvent) rollbackAuditEvent(targetEvent);
+      }
     }
 
     window.addEventListener("message", respondWithAuditLog);
@@ -449,6 +587,79 @@ export function StaticSiteEditor() {
     if (element) {
       openMenuForElement(element, x, y);
     }
+  }
+
+  function toggleRegionSelection(element: HTMLElement, clientX: number, clientY: number) {
+    const key = element.dataset.demoEditableKey;
+    const kind = element.dataset.demoEditableKind as EditableKind | undefined;
+    if (!key || !kind) return;
+
+    setMenu(null);
+    setGalleryOpen(false);
+    setSelectedRegions((current) => {
+      const exists = current.some((region) => region.key === key);
+      const next = exists
+        ? current.filter((region) => region.key !== key)
+        : [...current, { key, kind, label: regionLabel(element) }];
+      element.classList.toggle("demo-selected-link-region", !exists);
+      return next;
+    });
+    setLinkPanel({
+      x: Math.min(clientX, window.innerWidth - 360),
+      y: Math.min(clientY, window.innerHeight - 360),
+      url: "https://",
+      pagePath: pageOptions[0]?.path ?? "/",
+      postId: availablePosts[0]?.id ?? "",
+    });
+    setStatus("Selected areas are ready to link. Choose a destination in the linking panel.");
+  }
+
+  function linkSelectionToTarget(href: string) {
+    if (!href || selectedRegions.length === 0) return;
+    const bindings = readLinkBindings();
+    selectedRegions.forEach((region) => {
+      bindings[region.key] = href;
+      const element = document.querySelector<HTMLElement>(`[data-demo-editable-key="${CSS.escape(region.key)}"]`);
+      if (!element) return;
+      element.dataset.demoLinkedHref = href;
+      element.classList.add("demo-selected-link-region");
+      if (element instanceof HTMLAnchorElement) element.setAttribute("href", href);
+    });
+    writeLinkBindings(bindings);
+    setStatus(`Linked ${selectedRegions.length} selected area${selectedRegions.length === 1 ? "" : "s"}.`);
+    setSelectedRegions([]);
+    setLinkPanel(null);
+  }
+
+  function createPostFromSelection() {
+    const title = selectedRegions[0]?.label || "New linked post";
+    const id = `manual-post-${Date.now()}`;
+    const post: EditorPost = {
+      id,
+      title,
+      slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || id,
+      status: "draft",
+      excerpt: `Draft post created from ${selectedRegions.length} selected page area${selectedRegions.length === 1 ? "" : "s"}.`,
+      imagePath: "",
+      source: "manual",
+      sourcePagePath: normalizedPath(),
+      linkedRegionIds: selectedRegions.map((region) => region.key),
+    };
+    const nextPosts = [post, ...readStoredPosts().filter((item) => item.id !== post.id)];
+    writeStoredPosts(nextPosts);
+    setCreatedPosts(nextPosts);
+    linkSelectionToTarget(`/news#${post.id}`);
+    setStatus(`Created post "${post.title}" and linked the selected areas.`);
+  }
+
+  function toggleFavoriteMedia(assetId: string) {
+    setFavoriteMediaIds((current) => {
+      const next = new Set(current);
+      if (next.has(assetId)) next.delete(assetId);
+      else next.add(assetId);
+      writeFavoriteMediaIds(next);
+      return next;
+    });
   }
 
   useEffect(() => {
@@ -500,6 +711,8 @@ export function StaticSiteEditor() {
       setGalleryOpen(false);
       setHistoryOpen(false);
       setImageTargets([]);
+      setSelectedRegions([]);
+      setLinkPanel(null);
       return;
     }
 
@@ -558,6 +771,10 @@ export function StaticSiteEditor() {
 
       event.preventDefault();
       event.stopPropagation();
+      if (event.shiftKey) {
+        toggleRegionSelection(target, event.clientX, event.clientY);
+        return;
+      }
       openMenuForElement(target, event.clientX, event.clientY);
     }
 
@@ -586,10 +803,11 @@ export function StaticSiteEditor() {
         element.classList.remove("demo-editable-target");
         element.classList.remove("demo-editable-image-target");
         element.classList.remove("demo-editable-text-target");
+        element.classList.remove("demo-selected-link-region");
         element.removeAttribute("title");
       });
     };
-  }, [active]);
+  }, [active, availablePosts]);
 
   useEffect(() => {
     if (!menu || !menuRef.current) return;
@@ -784,6 +1002,19 @@ export function StaticSiteEditor() {
     return <span>{editSummary(edit)}</span>;
   }
 
+  function formatRegionLabel(regionKey: string) {
+    const parts = regionKey.split(/[.:]/).filter(Boolean).slice(-2);
+    return (parts.length ? parts : ["Selected area"])
+      .map((part) => part.replace(/[-_]+/g, " "))
+      .join(" ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  function formatHistoryTitle(event: AuditEvent) {
+    const action = event.action === "rollback" ? "Restored" : "Updated";
+    return `${action} ${formatRegionLabel(event.regionKey)}`;
+  }
+
   return (
     <>
       {loginOpen ? (
@@ -864,6 +1095,80 @@ export function StaticSiteEditor() {
           ))
         : null}
 
+      {linkPanel && selectedRegions.length > 0 ? (
+        <div
+          className="demo-editor-ui demo-multi-select-panel"
+          style={{ left: linkPanel.x, top: linkPanel.y }}
+          role="dialog"
+          aria-label="Link selected content"
+        >
+          <p className="demo-kicker">Link selection</p>
+          <strong>{selectedRegions.length} selected area{selectedRegions.length === 1 ? "" : "s"}</strong>
+          <div className="demo-selected-region-list">
+            {selectedRegions.map((region) => (
+              <span key={region.key}>{region.label}</span>
+            ))}
+          </div>
+          <label>
+            Link to URL
+            <div className="demo-link-row">
+              <input
+                value={linkPanel.url}
+                onChange={(event) => setLinkPanel({ ...linkPanel, url: event.target.value })}
+                placeholder="https://example.com"
+              />
+              <button type="button" onClick={() => linkSelectionToTarget(linkPanel.url)}>
+                Apply
+              </button>
+            </div>
+          </label>
+          <label>
+            Project page
+            <div className="demo-link-row">
+              <select value={linkPanel.pagePath} onChange={(event) => setLinkPanel({ ...linkPanel, pagePath: event.target.value })}>
+                {pageOptions.map((page) => (
+                  <option key={page.path} value={page.path}>
+                    {page.label}
+                  </option>
+                ))}
+              </select>
+              <button type="button" onClick={() => linkSelectionToTarget(linkPanel.pagePath)}>
+                Apply
+              </button>
+            </div>
+          </label>
+          <label>
+            Existing post
+            <div className="demo-link-row">
+              <select value={linkPanel.postId} onChange={(event) => setLinkPanel({ ...linkPanel, postId: event.target.value })}>
+                {availablePosts.map((post) => (
+                  <option key={post.id} value={post.id}>
+                    {post.title}
+                  </option>
+                ))}
+              </select>
+              <button type="button" onClick={() => linkSelectionToTarget(`/news#${linkPanel.postId}`)}>
+                Apply
+              </button>
+            </div>
+          </label>
+          <div className="demo-link-actions">
+            <button type="button" onClick={createPostFromSelection}>
+              Create post
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedRegions([]);
+                setLinkPanel(null);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {menu ? (
         <div
           ref={menuRef}
@@ -885,10 +1190,13 @@ export function StaticSiteEditor() {
           )}
           {menu.kind === "image" && (
             <>
-              <label>
-                Image path
-                <input value={menu.src} onChange={(event) => setMenu({ ...menu, src: event.target.value })} />
-              </label>
+              <div className="demo-selected-image-preview">
+                <img src={withSiteBasePath(menu.src)} alt="" />
+                <div>
+                  <strong>Selected image</strong>
+                  <span>{galleryAssets.find((asset) => asset.src === menu.src)?.label ?? "Current page image"}</span>
+                </div>
+              </div>
               <label>
                 Alt text
                 <textarea value={menu.alt} onChange={(event) => setMenu({ ...menu, alt: event.target.value })} />
@@ -906,6 +1214,13 @@ export function StaticSiteEditor() {
                   <input type="file" accept="image/*" onChange={uploadGalleryAsset} />
                 </label>
               </div>
+              <details className="demo-technical-details">
+                <summary>Show technical details</summary>
+                <label>
+                  Image source
+                  <input value={menu.src} onChange={(event) => setMenu({ ...menu, src: event.target.value })} />
+                </label>
+              </details>
             </>
           )}
           <div className="demo-context-actions">
@@ -950,17 +1265,21 @@ export function StaticSiteEditor() {
             </label>
             <div className="demo-gallery-grid">
               {galleryAssets.map((asset) => (
-                <button
-                  className="demo-gallery-card"
-                  key={asset.id}
-                  type="button"
-                  onClick={() => selectGalleryAsset(asset)}
-                  title={`${asset.label} (${asset.mimeType})`}
-                >
-                  <img src={withSiteBasePath(asset.src)} alt="" />
-                  <span>{asset.label}</span>
-                  <small>{asset.source === "upload" ? "Uploaded image" : "Demo gallery"}</small>
-                </button>
+                <article className="demo-gallery-card" key={asset.id} title={`${asset.label} (${asset.mimeType})`}>
+                  <button type="button" onClick={() => selectGalleryAsset(asset)}>
+                    <img src={withSiteBasePath(asset.src)} alt="" />
+                    <span>{asset.label}</span>
+                    <small>{asset.source === "upload" ? "Uploaded image" : "Project media"}</small>
+                  </button>
+                  <button
+                    className="demo-favorite-button"
+                    type="button"
+                    aria-pressed={favoriteMediaIds.has(asset.id)}
+                    onClick={() => toggleFavoriteMedia(asset.id)}
+                  >
+                    {favoriteMediaIds.has(asset.id) ? "Favorited" : "Favorite"}
+                  </button>
+                </article>
               ))}
             </div>
           </section>
@@ -993,13 +1312,11 @@ export function StaticSiteEditor() {
                 {auditEvents.map((event) => (
                   <article className="demo-history-event" key={event.id}>
                     <div>
-                      <strong>{event.summary}</strong>
+                      <strong>{formatHistoryTitle(event)}</strong>
                       <span>
                         {new Date(event.changedAt).toLocaleString()} by {event.userLabel}
                       </span>
-                      <small>
-                        Page: {event.pagePath} | Field: {event.regionKey}
-                      </small>
+                      <small>{pageOptions.find((page) => page.path === event.pagePath)?.label ?? event.pagePath} page</small>
                     </div>
                     <dl className="demo-history-values">
                       <div>
@@ -1020,7 +1337,7 @@ export function StaticSiteEditor() {
                       </div>
                     ) : (
                       <button type="button" onClick={() => rollbackAuditEvent(event)}>
-                        Rollback
+                        Restore
                       </button>
                     )}
                   </article>

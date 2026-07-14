@@ -1604,7 +1604,8 @@ body.demo-editor-active [data-builder-region] {
 }
 
 .demo-login-modal label,
-.demo-context-menu label {
+.demo-context-menu label,
+.demo-multi-select-panel label {
   display: grid;
   gap: 8px;
   color: #344054;
@@ -1613,7 +1614,9 @@ body.demo-editor-active [data-builder-region] {
 
 .demo-login-modal input,
 .demo-context-menu input,
-.demo-context-menu textarea {
+.demo-context-menu textarea,
+.demo-multi-select-panel input,
+.demo-multi-select-panel select {
   width: 100%;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -1626,6 +1629,43 @@ body.demo-editor-active [data-builder-region] {
 .demo-context-menu textarea {
   min-height: 96px;
   resize: vertical;
+}
+
+.demo-selected-image-preview {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 8px;
+}
+
+.demo-selected-image-preview img {
+  width: 82px;
+  aspect-ratio: 4 / 3;
+  border-radius: 6px;
+  background: #e2e8f0;
+  object-fit: contain;
+}
+
+.demo-selected-image-preview div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.demo-selected-image-preview span,
+.demo-technical-details {
+  color: #667085;
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.demo-technical-details summary {
+  cursor: pointer;
+  font-weight: 900;
 }
 
 .demo-login-actions,
@@ -1867,8 +1907,20 @@ body.demo-editor-active [data-builder-region] {
   text-align: left;
 }
 
+.demo-gallery-card > button:first-child {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
 .demo-gallery-card:hover,
-.demo-gallery-card:focus-visible {
+.demo-gallery-card:focus-within {
   border-color: #0f766e;
   outline: none;
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.16);
@@ -1878,7 +1930,8 @@ body.demo-editor-active [data-builder-region] {
   width: 100%;
   aspect-ratio: 4 / 3;
   border-radius: 6px;
-  object-fit: cover;
+  background: #eef2f6;
+  object-fit: contain;
 }
 
 .demo-gallery-card span {
@@ -1897,6 +1950,83 @@ body.demo-editor-active [data-builder-region] {
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.demo-favorite-button {
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 8px;
+}
+
+.demo-favorite-button[aria-pressed="true"] {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.demo-multi-select-panel {
+  position: fixed;
+  z-index: 300;
+  width: min(350px, calc(100vw - 24px));
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 22px 70px rgba(15, 23, 42, 0.26);
+  padding: 14px;
+  color: #172033;
+}
+
+.demo-selected-region-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 86px;
+  overflow: auto;
+}
+
+.demo-selected-region-list span {
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #175cd3;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 6px 8px;
+}
+
+.demo-link-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.demo-link-row button,
+.demo-link-actions button {
+  border: 1px solid #0f766e;
+  border-radius: 8px;
+  background: #0f766e;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 900;
+  padding: 9px 11px;
+}
+
+.demo-link-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.demo-link-actions button:last-child {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #334155;
 }
 
 .demo-history-modal {
@@ -2111,6 +2241,12 @@ body.demo-editor-active .mobile-bottom-nav {
 .demo-editable-image-target:hover {
   outline-color: #b45309;
   box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.32);
+}
+
+.demo-selected-link-region {
+  outline: 3px solid rgba(37, 99, 235, 0.9) !important;
+  outline-offset: 6px !important;
+  box-shadow: 0 0 0 7px rgba(37, 99, 235, 0.18) !important;
 }
 
 .demo-image-target-layer {

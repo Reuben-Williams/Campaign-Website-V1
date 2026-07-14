@@ -95,7 +95,11 @@ describe("GitHub Pages editor demo", () => {
     expect(shell).toContain("postsWorkspace={<EditorPostsWorkspace");
     expect(postsWorkspace).toContain("onClick={() => selectPost(post.id)}");
     expect(postsWorkspace).toContain("Save post");
-    expect(postsWorkspace).toContain("Create placeholder");
+    expect(postsWorkspace).toContain("Create post");
+    expect(postsWorkspace).toContain("Featured image");
+    expect(postsWorkspace).toContain("Choose from media library");
+    expect(postsWorkspace).toContain("Show full path");
+    expect(postsWorkspace).toContain("outline: \"none\"");
     expect(postsWorkspace).toContain("Linked regions");
     expect(postsWorkspace).toContain("selectedPostId");
     expect(postManifest).toContain("source: \"site-scan\"");
@@ -220,5 +224,39 @@ describe("GitHub Pages editor demo", () => {
     expect(styles).toContain("grid-template-columns: minmax(0, 1fr) minmax(240px, 0.85fr) var(--demo-history-action-width)");
     expect(styles).toContain("width: var(--demo-history-action-width)");
     expect(styles).toContain("box-sizing: border-box");
+  });
+
+  it("adds the requested editor UX polish for linking, media, history, and sidebar pages", () => {
+    const editorVendor = readFileSync(join(process.cwd(), "src/vendor/site-editor-platform/editor.tsx"), "utf8");
+    const staticEditor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+    const styles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(editorVendor).toContain("pagesExpanded");
+    expect(editorVendor).toContain("aria-label=\"Toggle pages list\"");
+    expect(editorVendor).toContain("MediaAssetCard");
+    expect(editorVendor).toContain("fullscreenAsset");
+    expect(editorVendor).toContain("favoriteMediaStorageKey");
+    expect(editorVendor).toContain("objectFit: \"contain\"");
+    expect(editorVendor).toContain("formatAuditEventTitle");
+    expect(editorVendor).toContain("Restore previous version");
+    expect(editorVendor).toContain("requestDemoRollback");
+    expect(editorVendor).toContain("campaign-v1-static-editor:rollback-request");
+
+    expect(staticEditor).toContain("editorMediaAssets");
+    expect(staticEditor).toContain("selectedRegions");
+    expect(staticEditor).toContain("event.shiftKey");
+    expect(staticEditor).toContain("linkSelectionToTarget");
+    expect(staticEditor).toContain("Create post");
+    expect(staticEditor).toContain("Link to URL");
+    expect(staticEditor).toContain("Project page");
+    expect(staticEditor).toContain("Existing post");
+    expect(staticEditor).toContain("favoriteMediaStorageKey");
+    expect(staticEditor).toContain("Selected image");
+    expect(staticEditor).toContain("Show technical details");
+
+    expect(styles).toContain(".demo-multi-select-panel");
+    expect(styles).toContain(".demo-selected-link-region");
+    expect(styles).toContain(".demo-selected-image-preview");
+    expect(styles).toContain(".demo-favorite-button");
   });
 });

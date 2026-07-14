@@ -3,16 +3,22 @@
 import React, { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
+  ChevronDown,
+  FileText,
+  History as HistoryIcon,
+  Image as ImageIcon,
   Monitor,
+  Newspaper,
   RotateCw,
   Save,
   LogOut,
   Smartphone,
+  Star,
   Tablet,
   Upload,
+  X,
 } from "lucide-react";
 import { isBuilderPreviewMessage, type AuditEvent, type BuilderPage, type EditableValue, type MediaAsset } from "./core";
-import { ContentNavigation } from "./content/ContentNavigation";
 import type { ContentWorkspace } from "./content/content-types";
 import { computeContextMenuPosition, PostContextMenu } from "./content/PostContextMenu";
 
@@ -86,6 +92,11 @@ type DemoHistoryMessage = {
   events: DemoAuditEvent[];
 };
 
+type DemoRollbackRequestMessage = {
+  type: "campaign-v1-static-editor:rollback-request";
+  eventId: string;
+};
+
 export const defaultViewportPresets: EditorViewportPreset[] = [
   { id: "desktop", label: "Desktop", width: 1280, height: 860 },
   { id: "tablet", label: "Tablet", width: 820, height: 1080 },
@@ -95,6 +106,10 @@ export const defaultViewportPresets: EditorViewportPreset[] = [
 const demoHistoryStorageKey = "campaign-v1-static-editor:history";
 const demoHistoryMessageType = "campaign-v1-static-editor:history-updated";
 const demoHistoryRequestMessageType = "campaign-v1-static-editor:history-request";
+const demoRollbackRequestMessageType = "campaign-v1-static-editor:rollback-request";
+const favoriteMediaStorageKey = "campaign-v1-editor:favorite-media";
+const emptyAuditLog: AuditEvent[] = [];
+const emptyMediaAssets: MediaAsset[] = [];
 
 export function buildPreviewUrl(baseUrl: string, path: string, siteId?: string) {
   const base = new URL(baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`);
@@ -163,6 +178,49 @@ function isDemoHistoryMessage(value: unknown): value is DemoHistoryMessage {
   return message.type === demoHistoryMessageType && Array.isArray(message.events);
 }
 
+function formatRegionLabel(regionId?: string) {
+  if (!regionId) return "Selected area";
+  const parts = regionId.split(/[.:]/).filter(Boolean);
+  const usefulParts = parts.slice(-2);
+  return usefulParts
+    .map((part) => part.replace(/[-_]+/g, " "))
+    .join(" ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatPageLabel(pagePath: string, pages: BuilderPage[]) {
+  return pages.find((page) => page.path === pagePath)?.label ?? (pagePath === "/" ? "Home" : pagePath.replace("/", ""));
+}
+
+function formatAuditEventTitle(event: AuditEvent, pages: BuilderPage[]) {
+  const actionLabel = event.action === "version.rolled_back" ? "Restored" : "Updated";
+  const kindLabel = event.kind === "image" ? "image" : event.kind === "link" ? "link" : "text";
+  return `${actionLabel} ${formatRegionLabel(event.regionId)} ${kindLabel}`;
+}
+
+function formatAuditEventMeta(event: AuditEvent, pages: BuilderPage[]) {
+  const pageLabel = formatPageLabel(event.pagePath, pages);
+  const actor = event.userLabel ?? event.userId;
+  const time = new Date(event.createdAt).toLocaleString();
+  return `${pageLabel} page - ${time}${actor ? ` by ${actor}` : ""}`;
+}
+
+function readFavoriteMediaIds() {
+  if (typeof window === "undefined") return new Set<string>();
+
+  try {
+    const ids = JSON.parse(window.localStorage.getItem(favoriteMediaStorageKey) ?? "[]") as string[];
+    return new Set(Array.isArray(ids) ? ids : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function writeFavoriteMediaIds(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(favoriteMediaStorageKey, JSON.stringify(Array.from(ids)));
+}
+
 export function EditorShell({
   siteId,
   currentPath,
@@ -176,8 +234,8 @@ export function EditorShell({
   demoMode = false,
   onViewportChange,
   selectedRegion,
-  auditLog = [],
-  mediaAssets = [],
+  auditLog = emptyAuditLog,
+  mediaAssets = emptyMediaAssets,
   children,
   postCollectionMode = "query",
   onEditPost,
@@ -196,6 +254,7 @@ export function EditorShell({
   const [zoom, setZoom] = useState(clampZoom(defaultZoom));
   const [orientation, setOrientation] = useState<EditorViewportState["orientation"]>("portrait");
   const [activeWorkspace, setActiveWorkspace] = useState<ContentWorkspace>(initialWorkspace);
+  const [pagesExpanded, setPagesExpanded] = useState(true);
   const [displayedAuditLog, setDisplayedAuditLog] = useState<AuditEvent[]>(auditLog);
   const dragCleanupRef = useRef<(() => void) | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
@@ -347,6 +406,15 @@ export function EditorShell({
     previewFrameRef.current?.contentWindow?.postMessage({ type: demoHistoryRequestMessageType }, window.location.origin);
   }
 
+  function requestDemoRollback(event: AuditEvent) {
+    if (!demoMode) return;
+    const message: DemoRollbackRequestMessage = {
+      type: demoRollbackRequestMessageType,
+      eventId: event.id,
+    };
+    previewFrameRef.current?.contentWindow?.postMessage(message, window.location.origin);
+  }
+
   const workspaceContent =
     activeWorkspace === "pages"
       ? null
@@ -356,6 +424,7 @@ export function EditorShell({
           mediaAssets: mediaAssets.length > 0 ? mediaAssets : defaultDemoMediaAssets(previewBaseUrl, siteId),
           auditLog: displayedAuditLog,
           pages,
+          onRestoreVersion: requestDemoRollback,
         });
 
   return (
@@ -365,21 +434,81 @@ export function EditorShell({
           <strong>{siteId}</strong>
           <span style={styles.muted}>{demoMode ? "Demo mode" : "Site editor"}</span>
         </div>
-        <ContentNavigation active={activeWorkspace} onChange={setActiveWorkspace} />
-        <nav style={styles.nav}>
-          {pages.map((page) => (
-            <a
-              key={page.path}
-              href={`?path=${encodeURIComponent(page.path)}`}
-              aria-current={page.path === currentPath ? "page" : undefined}
+        <nav style={styles.workspaceNav} aria-label="Editor workspaces">
+          <button
+            type="button"
+            aria-label="Toggle pages list"
+            aria-expanded={pagesExpanded}
+            onClick={() => {
+              setActiveWorkspace("pages");
+              setPagesExpanded((expanded) => !expanded);
+            }}
+            style={{
+              ...styles.workspaceNavButton,
+              ...(activeWorkspace === "pages" ? styles.workspaceNavButtonActive : {}),
+            }}
+          >
+            <FileText size={18} aria-hidden="true" />
+            <span>Pages</span>
+            <ChevronDown
+              size={16}
+              aria-hidden="true"
               style={{
-                ...styles.navItem,
-                ...(page.path === currentPath ? styles.navItemActive : {}),
+                ...styles.navChevron,
+                transform: pagesExpanded ? "rotate(0deg)" : "rotate(-90deg)",
               }}
-            >
-              {page.label}
-            </a>
-          ))}
+            />
+          </button>
+          {pagesExpanded ? (
+            <div style={styles.nestedPageNav}>
+              {pages.map((page) => (
+                <a
+                  key={page.path}
+                  href={`?path=${encodeURIComponent(page.path)}`}
+                  aria-current={page.path === currentPath ? "page" : undefined}
+                  style={{
+                    ...styles.navItem,
+                    ...(page.path === currentPath ? styles.navItemActive : {}),
+                  }}
+                >
+                  {page.label}
+                </a>
+              ))}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setActiveWorkspace("posts")}
+            style={{
+              ...styles.workspaceNavButton,
+              ...(activeWorkspace === "posts" ? styles.workspaceNavButtonActive : {}),
+            }}
+          >
+            <Newspaper size={18} aria-hidden="true" />
+            <span>Posts</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveWorkspace("media")}
+            style={{
+              ...styles.workspaceNavButton,
+              ...(activeWorkspace === "media" ? styles.workspaceNavButtonActive : {}),
+            }}
+          >
+            <ImageIcon size={18} aria-hidden="true" />
+            <span>Media</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveWorkspace("history")}
+            style={{
+              ...styles.workspaceNavButton,
+              ...(activeWorkspace === "history" ? styles.workspaceNavButtonActive : {}),
+            }}
+          >
+            <HistoryIcon size={18} aria-hidden="true" />
+            <span>History</span>
+          </button>
         </nav>
       </aside>
 
@@ -550,24 +679,18 @@ export function EditorShell({
         <ol style={styles.historyList}>
           {displayedAuditLog.map((event) => (
             <li key={event.id} style={styles.historyItem}>
-              <strong>{event.summary}</strong>
-              <span style={styles.muted}>
-                {new Date(event.createdAt).toLocaleString()}
-                {event.userLabel || event.userId ? ` by ${event.userLabel ?? event.userId}` : ""}
-              </span>
-              <span style={styles.muted}>
-                {event.pagePath}
-                {event.regionId ? ` | ${event.regionId}` : ""}
-              </span>
+              <strong>{formatAuditEventTitle(event, pages)}</strong>
+              <span style={styles.muted}>{formatAuditEventMeta(event, pages)}</span>
+              <span style={styles.muted}>{formatRegionLabel(event.regionId)}</span>
               <HistoryValue label="Before" value={event.before} />
               <HistoryValue label="After" value={event.after} />
               {event.action === "version.rolled_back" ? (
-                <button type="button" style={styles.secondaryButton}>
+                <button type="button" style={styles.secondaryButton} onClick={() => requestDemoRollback(event)}>
                   Undo rollback
                 </button>
               ) : (
-                <button type="button" style={styles.primaryButton}>
-                  Rollback
+                <button type="button" style={styles.primaryButton} onClick={() => requestDemoRollback(event)}>
+                  Restore previous version
                 </button>
               )}
             </li>
@@ -598,12 +721,14 @@ function renderWorkspaceContent({
   mediaAssets,
   auditLog,
   pages,
+  onRestoreVersion,
 }: {
   activeWorkspace: Exclude<ContentWorkspace, "pages">;
   postsWorkspace?: ReactNode;
   mediaAssets: MediaAsset[];
   auditLog: AuditEvent[];
   pages: BuilderPage[];
+  onRestoreVersion: (event: AuditEvent) => void;
 }) {
   if (activeWorkspace === "posts") {
     return (
@@ -637,27 +762,7 @@ function renderWorkspaceContent({
   }
 
   if (activeWorkspace === "media") {
-    return (
-      <section style={styles.contentWorkspace} aria-label="Media workspace" data-builder-content-workspace="media">
-        <WorkspaceHeader
-          title="Media library"
-          eyebrow="Assets"
-          description="Review the campaign images available to the editor. Image replacements still happen from editable image fields in the page preview."
-        />
-        <div style={styles.mediaGrid}>
-          {mediaAssets.map((asset) => (
-            <article key={asset.id} style={styles.mediaCard}>
-              <img src={asset.url} alt={asset.alt} style={styles.mediaPreview} />
-              <div style={styles.mediaBody}>
-                <strong>{asset.label}</strong>
-                <span style={styles.workspaceCardMeta}>{asset.path}</span>
-                <span style={styles.muted}>{asset.mimeType}</span>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-    );
+    return <MediaWorkspace mediaAssets={mediaAssets} />;
   }
 
   return (
@@ -671,18 +776,17 @@ function renderWorkspaceContent({
         <ol style={styles.workspaceHistoryList}>
           {auditLog.map((event) => (
             <li key={event.id} style={styles.workspaceCard}>
-              <span style={styles.statusPill}>{event.action}</span>
-              <h3 style={styles.workspaceCardTitle}>{event.summary}</h3>
-              <p style={styles.workspaceCardMeta}>
-                {event.pagePath}
-                {event.regionId ? ` | ${event.regionId}` : ""}
-              </p>
-              <p style={styles.muted}>
-                {new Date(event.createdAt).toLocaleString()}
-                {event.userLabel || event.userId ? ` by ${event.userLabel ?? event.userId}` : ""}
-              </p>
+              <span style={styles.statusPill}>
+                {event.action === "version.rolled_back" ? "Restored" : "Saved change"}
+              </span>
+              <h3 style={styles.workspaceCardTitle}>{formatAuditEventTitle(event, pages)}</h3>
+              <p style={styles.workspaceCardMeta}>{formatAuditEventMeta(event, pages)}</p>
+              <p style={styles.muted}>Area: {formatRegionLabel(event.regionId)}</p>
               <HistoryValue label="Before" value={event.before} />
               <HistoryValue label="After" value={event.after} />
+              <button type="button" style={styles.primaryButton} onClick={() => onRestoreVersion(event)}>
+                {event.action === "version.rolled_back" ? "Undo restore" : "Restore previous version"}
+              </button>
             </li>
           ))}
         </ol>
@@ -696,6 +800,130 @@ function renderWorkspaceContent({
       )}
     </section>
   );
+}
+
+function MediaWorkspace({ mediaAssets }: { mediaAssets: MediaAsset[] }) {
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => readFavoriteMediaIds());
+  const [fullscreenAsset, setFullscreenAsset] = useState<MediaAsset | null>(null);
+  const sortedAssets = useMemo(
+    () => [...mediaAssets].sort((a, b) => Number(favoriteIds.has(b.id)) - Number(favoriteIds.has(a.id))),
+    [favoriteIds, mediaAssets],
+  );
+
+  function toggleFavorite(assetId: string) {
+    setFavoriteIds((current) => {
+      const next = new Set(current);
+      if (next.has(assetId)) {
+        next.delete(assetId);
+      } else {
+        next.add(assetId);
+      }
+      writeFavoriteMediaIds(next);
+      return next;
+    });
+  }
+
+  return (
+    <section style={styles.contentWorkspace} aria-label="Media workspace" data-builder-content-workspace="media">
+      <WorkspaceHeader
+        title="Media library"
+        eyebrow="Assets"
+        description="Review project images, mark favorites for the page editor gallery, and open any image for a larger view."
+      />
+      <div style={styles.mediaGrid}>
+        {sortedAssets.map((asset) => (
+          <MediaAssetCard
+            key={asset.id}
+            asset={asset}
+            isFavorite={favoriteIds.has(asset.id)}
+            onOpen={() => setFullscreenAsset(asset)}
+            onToggleFavorite={() => toggleFavorite(asset.id)}
+          />
+        ))}
+      </div>
+      {fullscreenAsset ? (
+        <div style={styles.mediaModalBackdrop} role="dialog" aria-modal="true" aria-label={fullscreenAsset.label}>
+          <section style={styles.mediaModal}>
+            <div style={styles.mediaModalHeader}>
+              <div>
+                <span style={styles.statusPill}>Media preview</span>
+                <h3 style={styles.workspaceCardTitle}>{fullscreenAsset.label}</h3>
+                <p style={styles.workspaceCardMeta}>{friendlyAssetLocation(fullscreenAsset)}</p>
+              </div>
+              <button type="button" style={styles.iconButton} onClick={() => setFullscreenAsset(null)} aria-label="Close media preview">
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+            <img src={fullscreenAsset.url} alt={fullscreenAsset.alt} style={styles.mediaModalImage} />
+            <div style={styles.mediaModalActions}>
+              <button type="button" style={styles.secondaryButton} onClick={() => toggleFavorite(fullscreenAsset.id)}>
+                <Star size={17} aria-hidden="true" fill={favoriteIds.has(fullscreenAsset.id) ? "currentColor" : "none"} />
+                <span>{favoriteIds.has(fullscreenAsset.id) ? "Favorited" : "Favorite"}</span>
+              </button>
+              <details style={styles.technicalDetails}>
+                <summary>Show technical details</summary>
+                <span>{fullscreenAsset.path}</span>
+                <span>{fullscreenAsset.mimeType}</span>
+              </details>
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function MediaAssetCard({
+  asset,
+  isFavorite,
+  onOpen,
+  onToggleFavorite,
+}: {
+  asset: MediaAsset;
+  isFavorite: boolean;
+  onOpen: () => void;
+  onToggleFavorite: () => void;
+}) {
+  return (
+    <article style={styles.mediaCard}>
+      <button type="button" style={styles.mediaOpenButton} onClick={onOpen} title={`Open ${asset.label}`}>
+        <img src={asset.url} alt={asset.alt} style={styles.mediaPreview} />
+      </button>
+      <div style={styles.mediaBody}>
+        <div style={styles.mediaTitleRow}>
+          <strong>{friendlyAssetName(asset)}</strong>
+          <button
+            type="button"
+            style={{
+              ...styles.favoriteButton,
+              ...(isFavorite ? styles.favoriteButtonActive : {}),
+            }}
+            onClick={onToggleFavorite}
+            aria-pressed={isFavorite}
+            aria-label={isFavorite ? `Remove ${asset.label} from favorites` : `Favorite ${asset.label}`}
+          >
+            <Star size={15} aria-hidden="true" fill={isFavorite ? "currentColor" : "none"} />
+          </button>
+        </div>
+        <span style={styles.workspaceCardMeta}>{friendlyAssetLocation(asset)}</span>
+        <details style={styles.technicalDetails}>
+          <summary>Show details</summary>
+          <span>{asset.path}</span>
+          <span>{asset.mimeType}</span>
+        </details>
+      </div>
+    </article>
+  );
+}
+
+function friendlyAssetName(asset: MediaAsset) {
+  return asset.label.replace(/\s+/g, " ").replace(/\bAsw Carmenmorales\b/i, "Campaign").trim();
+}
+
+function friendlyAssetLocation(asset: MediaAsset) {
+  const parts = asset.path.split("/").filter(Boolean);
+  const folder = parts.length > 1 ? parts.at(-2) : "Project media";
+  return `${folder?.replace(/[-_]+/g, " ")} image`;
 }
 
 function WorkspaceHeader({
@@ -818,7 +1046,7 @@ function RegionEditorFields({
     return (
       <div style={styles.fieldGroup}>
         <label htmlFor="builder-region-value" style={styles.label}>
-          Image path
+          Selected image
         </label>
         <input id="builder-region-value" defaultValue={selectedRegion.value} style={styles.input} />
         <label htmlFor="builder-region-alt" style={styles.label}>
@@ -940,9 +1168,40 @@ const styles = {
     color: "#667085",
     fontSize: "13px",
   },
-  nav: {
+  workspaceNav: {
     display: "grid",
     gap: "8px",
+  },
+  workspaceNavButton: {
+    display: "grid",
+    gridTemplateColumns: "20px minmax(0, 1fr) auto",
+    alignItems: "center",
+    gap: "8px",
+    width: "100%",
+    border: "1px solid transparent",
+    borderRadius: "8px",
+    background: "#ffffff",
+    color: "#1d2939",
+    cursor: "pointer",
+    font: "inherit",
+    fontWeight: 800,
+    padding: "10px 12px",
+    textAlign: "left",
+  },
+  workspaceNavButtonActive: {
+    background: "#eef4ff",
+    border: "1px solid #b2ccff",
+    color: "#175cd3",
+  },
+  navChevron: {
+    transition: "transform 160ms ease",
+  },
+  nestedPageNav: {
+    display: "grid",
+    gap: "4px",
+    margin: "0 0 10px 28px",
+    paddingLeft: "10px",
+    borderLeft: "1px solid #e4e7ec",
   },
   navItem: {
     color: "#344054",
@@ -953,7 +1212,7 @@ const styles = {
   },
   navItemActive: {
     background: "#eef4ff",
-    borderColor: "#b2ccff",
+    border: "1px solid #b2ccff",
     color: "#175cd3",
   },
   canvasArea: {
@@ -1202,16 +1461,103 @@ const styles = {
     borderRadius: "8px",
     background: "#ffffff",
   },
+  mediaOpenButton: {
+    width: "100%",
+    border: 0,
+    background: "#f8fafc",
+    cursor: "zoom-in",
+    padding: 0,
+  },
   mediaPreview: {
     width: "100%",
     aspectRatio: "16 / 10",
-    objectFit: "cover",
+    objectFit: "contain",
     background: "#eef2f6",
   },
   mediaBody: {
     display: "grid",
     gap: "5px",
     padding: "12px",
+  },
+  mediaTitleRow: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    alignItems: "center",
+    gap: "8px",
+  },
+  favoriteButton: {
+    display: "grid",
+    placeItems: "center",
+    width: "32px",
+    height: "32px",
+    border: "1px solid #d7dde5",
+    borderRadius: "8px",
+    background: "#ffffff",
+    color: "#667085",
+    cursor: "pointer",
+  },
+  favoriteButtonActive: {
+    border: "1px solid #f59e0b",
+    background: "#fffbeb",
+    color: "#b45309",
+  },
+  mediaModalBackdrop: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 50,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(5, 12, 28, 0.62)",
+    padding: "24px",
+  },
+  mediaModal: {
+    display: "grid",
+    gridTemplateRows: "auto minmax(0, 1fr) auto",
+    gap: "16px",
+    width: "min(980px, calc(100vw - 48px))",
+    maxHeight: "min(860px, calc(100vh - 64px))",
+    borderRadius: "12px",
+    background: "#ffffff",
+    boxShadow: "0 28px 90px rgba(0, 8, 30, 0.38)",
+    padding: "18px",
+  },
+  mediaModalHeader: {
+    display: "flex",
+    alignItems: "start",
+    justifyContent: "space-between",
+    gap: "14px",
+  },
+  iconButton: {
+    display: "grid",
+    placeItems: "center",
+    width: "38px",
+    height: "38px",
+    border: "1px solid #d7dde5",
+    borderRadius: "8px",
+    background: "#ffffff",
+    color: "#344054",
+    cursor: "pointer",
+  },
+  mediaModalImage: {
+    width: "100%",
+    minHeight: 0,
+    maxHeight: "calc(100vh - 260px)",
+    borderRadius: "8px",
+    background: "#eef2f6",
+    objectFit: "contain",
+  },
+  mediaModalActions: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+  },
+  technicalDetails: {
+    display: "grid",
+    gap: "4px",
+    color: "#667085",
+    fontSize: "12px",
+    overflowWrap: "anywhere",
   },
   workspaceHistoryList: {
     display: "grid",
