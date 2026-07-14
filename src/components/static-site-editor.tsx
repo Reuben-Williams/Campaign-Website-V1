@@ -945,9 +945,8 @@ export function StaticSiteEditor() {
     setActive(false);
   }
 
-  function syncRichTextFromEditor() {
-    if (!menu || !richTextRef.current) return;
-    setMenu({ ...menu, html: richTextRef.current.innerHTML, text: richTextRef.current.innerText.trim() });
+  function syncRichTextFromEditor(html = richTextRef.current?.innerHTML ?? "", text = richTextRef.current?.innerText.trim() ?? "") {
+    setMenu((current) => (current ? { ...current, html, text } : current));
   }
 
   function rememberRichTextSelection() {
@@ -968,11 +967,41 @@ export function StaticSiteEditor() {
     selection.addRange(richSelectionRef.current);
   }
 
-  function applyRichTextCommand(command: string, value?: string) {
+  function runRichTextAction(action: () => void) {
     restoreRichTextSelection();
-    document.execCommand(command, false, value);
-    syncRichTextFromEditor();
+    action();
+    syncRichTextFromEditor(richTextRef.current?.innerHTML ?? "", richTextRef.current?.innerText.trim() ?? "");
     rememberRichTextSelection();
+  }
+
+  function applyRichTextCommand(command: string, value?: string) {
+    runRichTextAction(() => {
+      document.execCommand(command, false, value);
+    });
+  }
+
+  function insertFormatSpan(property: "color" | "backgroundColor", value: string) {
+    runRichTextAction(() => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || !richTextRef.current) return;
+
+      const range = selection.getRangeAt(0);
+      if (!richTextRef.current.contains(range.commonAncestorContainer) || range.collapsed) return;
+
+      const selectedContent = range.extractContents();
+      const span = document.createElement("span");
+      span.style[property] = value;
+      span.appendChild(selectedContent);
+      range.insertNode(span);
+      selection.removeAllRanges();
+      const nextRange = document.createRange();
+      nextRange.selectNodeContents(span);
+      selection.addRange(nextRange);
+    });
+  }
+
+  function applyInlineFormat(property: "color" | "backgroundColor", value: string) {
+    insertFormatSpan(property, value);
   }
 
   function updateMenuStyle(next: Partial<Pick<MenuState, "textShadow" | "buttonBoxShadow" | "textColor" | "highlightColor" | "linkUrl">>) {
@@ -1332,59 +1361,67 @@ export function StaticSiteEditor() {
           <p className="demo-kicker">{menu.kind} tools</p>
           {(menu.kind === "text" || menu.kind === "link") && (
             <div className="demo-rich-text-section">
-              <span className="demo-field-label">Text</span>
-              <div className="demo-rich-text-toolbar" role="toolbar" aria-label="Text formatting">
-                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyRichTextCommand("bold")}>
-                  B
-                </button>
-                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyRichTextCommand("italic")}>
-                  I
-                </button>
-                <label title="Text color">
-                  <span>Color</span>
-                  <input
-                    type="color"
-                    value={menu.textColor}
-                    onChange={(event) => {
-                      updateMenuStyle({ textColor: event.target.value });
-                      applyRichTextCommand("foreColor", event.target.value);
-                    }}
-                  />
-                </label>
-                <label title="Highlight color">
-                  <span>Highlight</span>
-                  <input
-                    type="color"
-                    value={menu.highlightColor}
-                    onChange={(event) => {
-                      updateMenuStyle({ highlightColor: event.target.value });
-                      applyRichTextCommand("hiliteColor", event.target.value);
-                    }}
-                  />
-                </label>
-                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyRichTextCommand("createLink", menu.linkUrl)}>
-                  Link
-                </button>
-                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyRichTextCommand("unlink")}>
-                  Unlink
-                </button>
+              <div className="demo-rich-editor-shell">
+                <div className="demo-format-dock">
+                  <span className="demo-field-label">Text</span>
+                  <div className="demo-rich-text-toolbar" role="toolbar" aria-label="Text formatting">
+                    <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyRichTextCommand("bold")} aria-label="Bold">
+                      B
+                    </button>
+                    <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyRichTextCommand("italic")} aria-label="Italic">
+                      I
+                    </button>
+                    <label title="Text color">
+                      <span>Color</span>
+                      <input
+                        type="color"
+                        value={menu.textColor}
+                        onMouseDown={rememberRichTextSelection}
+                        onInput={(event) => {
+                          const color = event.currentTarget.value;
+                          updateMenuStyle({ textColor: color });
+                          applyInlineFormat("color", color);
+                        }}
+                      />
+                    </label>
+                    <label title="Highlight color">
+                      <span>Highlight</span>
+                      <input
+                        type="color"
+                        value={menu.highlightColor}
+                        onMouseDown={rememberRichTextSelection}
+                        onInput={(event) => {
+                          const color = event.currentTarget.value;
+                          updateMenuStyle({ highlightColor: color });
+                          applyInlineFormat("backgroundColor", color);
+                        }}
+                      />
+                    </label>
+                    <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyRichTextCommand("createLink", menu.linkUrl)}>
+                      Link
+                    </button>
+                    <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyRichTextCommand("unlink")}>
+                      Unlink
+                    </button>
+                  </div>
+                </div>
+                <div
+                  key={menu.key}
+                  ref={richTextRef}
+                  className="demo-rich-text-editor"
+                  contentEditable
+                  suppressContentEditableWarning
+                  role="textbox"
+                  aria-label="Editable formatted text"
+                  onInput={() => {
+                    syncRichTextFromEditor();
+                    rememberRichTextSelection();
+                  }}
+                  onMouseUp={rememberRichTextSelection}
+                  onKeyUp={rememberRichTextSelection}
+                  dangerouslySetInnerHTML={{ __html: menu.html }}
+                />
               </div>
-              <div
-                key={menu.key}
-                ref={richTextRef}
-                className="demo-rich-text-editor"
-                contentEditable
-                suppressContentEditableWarning
-                role="textbox"
-                aria-label="Editable formatted text"
-                onInput={() => {
-                  syncRichTextFromEditor();
-                  rememberRichTextSelection();
-                }}
-                onMouseUp={rememberRichTextSelection}
-                onKeyUp={rememberRichTextSelection}
-                dangerouslySetInnerHTML={{ __html: menu.html }}
-              />
               <label>
                 Link for selected words
                 <input value={menu.linkUrl} onChange={(event) => setMenu({ ...menu, linkUrl: event.target.value })} placeholder="https://example.com" />
@@ -1542,37 +1579,42 @@ export function StaticSiteEditor() {
             ) : (
               <div className="demo-history-list">
                 {auditEvents.map((event) => (
-                  <article className="demo-history-event" key={event.id}>
-                    <div>
-                      <strong>{formatHistoryTitle(event)}</strong>
+                  <details className="demo-history-event" key={event.id}>
+                    <summary className="demo-history-summary">
                       <span>
-                        {new Date(event.changedAt).toLocaleString()} by {event.userLabel}
+                        <strong>{formatHistoryTitle(event)}</strong>
+                        <small>
+                          {pageOptions.find((page) => page.path === event.pagePath)?.label ?? event.pagePath} page -{" "}
+                          {new Date(event.changedAt).toLocaleString()} by {event.userLabel}
+                        </small>
                       </span>
-                      <small>{pageOptions.find((page) => page.path === event.pagePath)?.label ?? event.pagePath} page</small>
-                    </div>
-                    <dl className="demo-history-values">
-                      <div>
-                        <dt>Before</dt>
-                        <dd>{renderHistoryValue(event.oldValue, "Before")}</dd>
-                      </div>
-                      <div>
-                        <dt>After</dt>
-                        <dd>{renderHistoryValue(event.newValue, "After")}</dd>
-                      </div>
-                    </dl>
-                    {event.action === "rollback" ? (
-                      <div className="demo-history-rollback-actions">
-                        <span className="demo-history-rollback-note">Rollback recorded</span>
-                        <button className="demo-history-undo-button" type="button" onClick={() => rollbackAuditEvent(event)}>
-                          Undo rollback
+                      <em>Click an update to review before and after details.</em>
+                    </summary>
+                    <div className="demo-history-event-details">
+                      <dl className="demo-history-values">
+                        <div>
+                          <dt>Before</dt>
+                          <dd>{renderHistoryValue(event.oldValue, "Before")}</dd>
+                        </div>
+                        <div>
+                          <dt>After</dt>
+                          <dd>{renderHistoryValue(event.newValue, "After")}</dd>
+                        </div>
+                      </dl>
+                      {event.action === "rollback" ? (
+                        <div className="demo-history-rollback-actions">
+                          <span className="demo-history-rollback-note">Rollback recorded</span>
+                          <button className="demo-history-undo-button" type="button" onClick={() => rollbackAuditEvent(event)}>
+                            Undo rollback
+                          </button>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => rollbackAuditEvent(event)}>
+                          Restore
                         </button>
-                      </div>
-                    ) : (
-                      <button type="button" onClick={() => rollbackAuditEvent(event)}>
-                        Restore
-                      </button>
-                    )}
-                  </article>
+                      )}
+                    </div>
+                  </details>
                 ))}
               </div>
             )}

@@ -678,22 +678,7 @@ export function EditorShell({
         <h3 style={styles.historyTitle}>Version history</h3>
         <ol style={styles.historyList}>
           {displayedAuditLog.map((event) => (
-            <li key={event.id} style={styles.historyItem}>
-              <strong>{formatAuditEventTitle(event, pages)}</strong>
-              <span style={styles.muted}>{formatAuditEventMeta(event, pages)}</span>
-              <span style={styles.muted}>{formatRegionLabel(event.regionId)}</span>
-              <HistoryValue label="Before" value={event.before} />
-              <HistoryValue label="After" value={event.after} />
-              {event.action === "version.rolled_back" ? (
-                <button type="button" style={styles.secondaryButton} onClick={() => requestDemoRollback(event)}>
-                  Undo rollback
-                </button>
-              ) : (
-                <button type="button" style={styles.primaryButton} onClick={() => requestDemoRollback(event)}>
-                  Restore previous version
-                </button>
-              )}
-            </li>
+            <HistoryAccordionItem key={event.id} event={event} pages={pages} onRestoreVersion={requestDemoRollback} />
           ))}
         </ol>
       </aside>
@@ -775,19 +760,7 @@ function renderWorkspaceContent({
       {auditLog.length > 0 ? (
         <ol style={styles.workspaceHistoryList}>
           {auditLog.map((event) => (
-            <li key={event.id} style={styles.workspaceCard}>
-              <span style={styles.statusPill}>
-                {event.action === "version.rolled_back" ? "Restored" : "Saved change"}
-              </span>
-              <h3 style={styles.workspaceCardTitle}>{formatAuditEventTitle(event, pages)}</h3>
-              <p style={styles.workspaceCardMeta}>{formatAuditEventMeta(event, pages)}</p>
-              <p style={styles.muted}>Area: {formatRegionLabel(event.regionId)}</p>
-              <HistoryValue label="Before" value={event.before} />
-              <HistoryValue label="After" value={event.after} />
-              <button type="button" style={styles.primaryButton} onClick={() => onRestoreVersion(event)}>
-                {event.action === "version.rolled_back" ? "Undo restore" : "Restore previous version"}
-              </button>
-            </li>
+            <HistoryAccordionItem key={event.id} event={event} pages={pages} onRestoreVersion={onRestoreVersion} />
           ))}
         </ol>
       ) : (
@@ -1127,6 +1100,46 @@ function HistoryValue({ label, value }: { label: string; value?: EditableValue |
       <strong style={styles.historyValueLabel}>{label}</strong>
       <span>{text}</span>
     </div>
+  );
+}
+
+function HistoryAccordionItem({
+  event,
+  pages,
+  onRestoreVersion,
+}: {
+  event: AuditEvent;
+  pages: BuilderPage[];
+  onRestoreVersion: (event: AuditEvent) => void;
+}) {
+  return (
+    <li style={styles.historyListItem}>
+      <details style={styles.historyItem}>
+        <summary style={styles.historySummary}>
+          <span style={styles.historySummaryText}>
+            <strong>{formatAuditEventTitle(event, pages)}</strong>
+            <span style={styles.muted}>{formatAuditEventMeta(event, pages)}</span>
+            <span style={styles.muted}>Area: {formatRegionLabel(event.regionId)}</span>
+          </span>
+          <span style={styles.historySummaryHint}>Expand to review details</span>
+        </summary>
+        <div style={styles.historyItemDetails}>
+          <dl style={styles.historyValues}>
+            <HistoryValue label="Before" value={event.before} />
+            <HistoryValue label="After" value={event.after} />
+          </dl>
+          {event.action === "version.rolled_back" ? (
+            <button type="button" style={styles.secondaryButton} onClick={() => onRestoreVersion(event)}>
+              Undo restore
+            </button>
+          ) : (
+            <button type="button" style={styles.primaryButton} onClick={() => onRestoreVersion(event)}>
+              Restore previous version
+            </button>
+          )}
+        </div>
+      </details>
+    </li>
   );
 }
 
@@ -1562,9 +1575,11 @@ const styles = {
   workspaceHistoryList: {
     display: "grid",
     gap: "12px",
+    maxHeight: "min(620px, calc(100vh - 210px))",
+    overflowY: "auto",
     listStyle: "none",
     margin: 0,
-    padding: 0,
+    padding: "0 4px 0 0",
   },
   emptyState: {
     display: "grid",
@@ -1653,16 +1668,55 @@ const styles = {
   historyList: {
     display: "grid",
     gap: "10px",
+    maxHeight: "min(420px, calc(100vh - 410px))",
+    overflowY: "auto",
     listStyle: "none",
     margin: 0,
-    padding: 0,
+    padding: "0 4px 0 0",
+  },
+  historyListItem: {
+    listStyle: "none",
   },
   historyItem: {
-    display: "grid",
-    gap: "4px",
     border: "1px solid #e4e7ec",
     borderRadius: "8px",
+    background: "#ffffff",
+    overflow: "hidden",
+  },
+  historySummary: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    gap: "10px",
+    alignItems: "center",
+    cursor: "pointer",
+    listStyle: "none",
     padding: "10px",
+  },
+  historySummaryText: {
+    display: "grid",
+    gap: "4px",
+    minWidth: 0,
+  },
+  historySummaryHint: {
+    borderRadius: "999px",
+    background: "#eef4ff",
+    color: "#175cd3",
+    fontSize: "12px",
+    fontWeight: 800,
+    padding: "5px 8px",
+    whiteSpace: "nowrap",
+  },
+  historyItemDetails: {
+    display: "grid",
+    gap: "10px",
+    borderTop: "1px solid #e4e7ec",
+    background: "#fbfcff",
+    padding: "10px",
+  },
+  historyValues: {
+    display: "grid",
+    gap: "8px",
+    margin: 0,
   },
   historyValue: {
     display: "grid",

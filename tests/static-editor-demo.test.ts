@@ -221,7 +221,7 @@ describe("GitHub Pages editor demo", () => {
     const styles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 
     expect(styles).toContain("--demo-history-action-width");
-    expect(styles).toContain("grid-template-columns: minmax(0, 1fr) minmax(240px, 0.85fr) var(--demo-history-action-width)");
+    expect(styles).toContain("grid-template-columns: minmax(0, 1fr) var(--demo-history-action-width)");
     expect(styles).toContain("width: var(--demo-history-action-width)");
     expect(styles).toContain("box-sizing: border-box");
   });
@@ -238,6 +238,9 @@ describe("GitHub Pages editor demo", () => {
     expect(editorVendor).toContain("favoriteMediaStorageKey");
     expect(editorVendor).toContain("objectFit: \"contain\"");
     expect(editorVendor).toContain("formatAuditEventTitle");
+    expect(editorVendor).toContain("HistoryAccordionItem");
+    expect(editorVendor).toContain("historyItemDetails");
+    expect(editorVendor).toContain("Expand to review details");
     expect(editorVendor).toContain("Restore previous version");
     expect(editorVendor).toContain("requestDemoRollback");
     expect(editorVendor).toContain("campaign-v1-static-editor:rollback-request");
@@ -327,16 +330,48 @@ describe("GitHub Pages editor demo", () => {
     const styles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 
     expect(staticEditor).toContain("contentEditable");
-    expect(staticEditor).toContain("applyRichTextCommand");
+    expect(staticEditor).toContain("applyInlineFormat");
     expect(staticEditor).toContain('applyRichTextCommand("bold")');
     expect(staticEditor).toContain('applyRichTextCommand("italic")');
-    expect(staticEditor).toContain('applyRichTextCommand("foreColor"');
-    expect(staticEditor).toContain('applyRichTextCommand("hiliteColor"');
+    expect(staticEditor).toContain('applyInlineFormat("color"');
+    expect(staticEditor).toContain('applyInlineFormat("backgroundColor"');
     expect(staticEditor).toContain('applyRichTextCommand("createLink"');
     expect(staticEditor).toContain("textShadow");
     expect(staticEditor).toContain("buttonBoxShadow");
+    expect(staticEditor).toContain('className="demo-format-dock"');
     expect(styles).toContain(".demo-rich-text-toolbar");
+    expect(styles).toContain(".demo-format-dock");
     expect(styles).toContain(".demo-rich-text-editor");
     expect(styles).toContain(".demo-style-grid");
+  });
+
+  it("keeps text formatting controls attached to the editor and preserves selected-word formatting", () => {
+    const staticEditor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+    const styles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(staticEditor).toContain("insertFormatSpan");
+    expect(staticEditor).toContain("const selectedContent = range.extractContents()");
+    expect(staticEditor).toContain("span.style[property] = value");
+    expect(staticEditor).toContain("range.insertNode(span)");
+    expect(staticEditor).toContain("runRichTextAction");
+    expect(staticEditor).toContain("syncRichTextFromEditor(richTextRef.current?.innerHTML");
+    expect(styles).toContain(".demo-rich-editor-shell");
+    expect(styles).toContain(".demo-format-dock");
+    expect(styles).toContain("border-bottom: 1px solid #d8dee8");
+  });
+
+  it("renders change history as bounded accordion rows", () => {
+    const staticEditor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+    const styles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(staticEditor).toContain("<details className=\"demo-history-event\"");
+    expect(staticEditor).toContain("<summary className=\"demo-history-summary\"");
+    expect(staticEditor).toContain("demo-history-event-details");
+    expect(staticEditor).toContain("Click an update to review before and after details.");
+    expect(styles).toContain(".demo-history-list");
+    expect(styles).toContain("max-height: min(620px, calc(100vh - 190px))");
+    expect(styles).toContain(".demo-history-summary");
+    expect(styles).toContain(".demo-history-event-details");
+    expect(styles).toContain(".demo-history-event[open]");
   });
 });
