@@ -534,6 +534,7 @@ export function StaticSiteEditor() {
   const selectedElement = useRef<HTMLElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pointerMenuActionHandled = useRef(false);
+  const selectedRegionsRef = useRef<SelectedRegionBinding[]>([]);
   const galleryAssets = useMemo(() => {
     const merged = [...uploadedGalleryAssets, ...projectGalleryAssets, ...staticGalleryAssets];
     const uniqueAssets = merged.filter((asset, index, assets) => assets.findIndex((item) => item.src === asset.src) === index);
@@ -564,11 +565,19 @@ export function StaticSiteEditor() {
     return () => window.removeEventListener("message", respondWithAuditLog);
   }, []);
 
+  useEffect(() => {
+    selectedRegionsRef.current = selectedRegions;
+  }, [selectedRegions]);
+
   function openMenuForElement(element: HTMLElement, clientX: number, clientY: number) {
     const kind = element.dataset.demoEditableKind as EditableKind | undefined;
     const key = element.dataset.demoEditableKey;
     if (!kind || !key) return;
 
+    clearSelectedRegionOutlines(selectedRegionsRef.current);
+    setSelectedRegions([]);
+    setLinkPanel(null);
+    setGalleryOpen(false);
     selectedElement.current = element;
     setMenu({
       key,
@@ -589,6 +598,24 @@ export function StaticSiteEditor() {
     }
   }
 
+  function clearSelectedRegionOutlines(regions: SelectedRegionBinding[] = selectedRegionsRef.current) {
+    regions.forEach((region) => {
+      const element = document.querySelector<HTMLElement>(`[data-demo-editable-key="${CSS.escape(region.key)}"]`);
+      if (!element?.dataset.demoLinkedHref) {
+        element?.classList.remove("demo-selected-link-region");
+      }
+    });
+  }
+
+  function clearOpenEditorMenus() {
+    clearSelectedRegionOutlines(selectedRegionsRef.current);
+    selectedElement.current = null;
+    setMenu(null);
+    setGalleryOpen(false);
+    setLinkPanel(null);
+    setSelectedRegions([]);
+  }
+
   function toggleRegionSelection(element: HTMLElement, clientX: number, clientY: number) {
     const key = element.dataset.demoEditableKey;
     const kind = element.dataset.demoEditableKind as EditableKind | undefined;
@@ -601,7 +628,11 @@ export function StaticSiteEditor() {
       const next = exists
         ? current.filter((region) => region.key !== key)
         : [...current, { key, kind, label: regionLabel(element) }];
-      element.classList.toggle("demo-selected-link-region", !exists);
+      if (exists && !element.dataset.demoLinkedHref) {
+        element.classList.remove("demo-selected-link-region");
+      } else if (!exists) {
+        element.classList.add("demo-selected-link-region");
+      }
       return next;
     });
     setLinkPanel({
@@ -767,7 +798,12 @@ export function StaticSiteEditor() {
 
     function onPointer(event: MouseEvent) {
       const target = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>("[data-demo-editable-key]") : null;
-      if (!target || target.closest(".demo-editor-ui")) return;
+      const clickedInsideEditorUi = event.target instanceof HTMLElement && event.target.closest(".demo-editor-ui");
+      if (clickedInsideEditorUi) return;
+      if (!target) {
+        clearOpenEditorMenus();
+        return;
+      }
 
       event.preventDefault();
       event.stopPropagation();
@@ -1159,8 +1195,7 @@ export function StaticSiteEditor() {
             <button
               type="button"
               onClick={() => {
-                setSelectedRegions([]);
-                setLinkPanel(null);
+                clearOpenEditorMenus();
               }}
             >
               Cancel

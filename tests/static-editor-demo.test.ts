@@ -259,4 +259,18 @@ describe("GitHub Pages editor demo", () => {
     expect(styles).toContain(".demo-selected-image-preview");
     expect(styles).toContain(".demo-favorite-button");
   });
+
+  it("closes editor menus when clicking outside and prevents single and multi-select menus from overlapping", () => {
+    const staticEditor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+
+    expect(staticEditor).toContain("clearOpenEditorMenus");
+    expect(staticEditor).toContain("clearSelectedRegionOutlines");
+    expect(staticEditor).toContain("clickedInsideEditorUi");
+    expect(staticEditor).toContain("if (!target) {");
+    expect(staticEditor).toContain("clearOpenEditorMenus();");
+    expect(staticEditor).toContain("selectedRegionsRef");
+    expect(staticEditor).toContain("clearSelectedRegionOutlines(selectedRegionsRef.current);");
+    expect(staticEditor).toContain("setLinkPanel(null);");
+    expect(staticEditor).toContain("setMenu(null);");
+  });
 });
