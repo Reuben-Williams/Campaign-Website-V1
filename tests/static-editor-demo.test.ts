@@ -45,6 +45,32 @@ describe("GitHub Pages editor demo", () => {
     expect(nextConfig).not.toContain('path.resolve(configDirectory, "..")');
   });
 
+  it("supports typed zoom, full viewport dimensions, and demo history refresh", () => {
+    const editorVendor = readFileSync(join(process.cwd(), "src/vendor/site-editor-platform/editor.tsx"), "utf8");
+    const staticEditor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+
+    expect(editorVendor).toContain("readDemoAuditLog");
+    expect(editorVendor).toContain("campaign-v1-static-editor:history");
+    expect(editorVendor).toContain("campaign-v1-static-editor:history-updated");
+    expect(editorVendor).toContain("campaign-v1-static-editor:history-request");
+    expect(editorVendor).toContain("isDemoHistoryMessage");
+    expect(editorVendor).toContain("mapDemoAuditEvents(event.data.events)");
+    expect(editorVendor).toContain("previewFrameRef.current?.contentWindow?.postMessage");
+    expect(editorVendor).toContain("setDisplayedAuditLog(readDemoAuditLog())");
+    expect(editorVendor).toContain("onClick={refreshDisplayedAuditLog}");
+    expect(editorVendor).toContain("Custom zoom percent");
+    expect(editorVendor).toContain("chooseZoomPercent");
+    expect(editorVendor).toContain("{activeViewport.width}x{activeViewport.height}");
+    expect(editorVendor).toContain("convertDemoEditToEditableValue");
+    expect(staticEditor).toContain("historyMessageType");
+    expect(staticEditor).toContain("historyRequestMessageType");
+    expect(staticEditor).toContain("notifyParentOfAuditEvents(events)");
+    expect(staticEditor).toContain("respondWithAuditLog");
+    expect(staticEditor).toContain("saveMenuEditFromPointer");
+    expect(staticEditor).toContain("onPointerDown={saveMenuEditFromPointer}");
+    expect(staticEditor).toContain("window.parent.postMessage");
+  });
+
   it("renders non-empty workspace screens for posts, media, and history", () => {
     const editorVendor = readFileSync(join(process.cwd(), "src/vendor/site-editor-platform/editor.tsx"), "utf8");
 

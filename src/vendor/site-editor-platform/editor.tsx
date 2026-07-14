@@ -63,11 +63,38 @@ export interface EditorViewportState extends EditorViewportPreset {
   orientation: "portrait" | "landscape";
 }
 
+type DemoStoredEdit =
+  | { kind: "text"; text: string }
+  | { kind: "image"; src: string; alt: string }
+  | { kind: "link"; text: string; href: string };
+
+type DemoAuditEvent = {
+  id: string;
+  action: "save" | "rollback";
+  pagePath: string;
+  regionKey: string;
+  kind: "text" | "image" | "link";
+  changedAt: string;
+  oldValue: DemoStoredEdit | null;
+  newValue: DemoStoredEdit | null;
+  summary: string;
+  userLabel: string;
+};
+
+type DemoHistoryMessage = {
+  type: "campaign-v1-static-editor:history-updated";
+  events: DemoAuditEvent[];
+};
+
 export const defaultViewportPresets: EditorViewportPreset[] = [
   { id: "desktop", label: "Desktop", width: 1280, height: 860 },
   { id: "tablet", label: "Tablet", width: 820, height: 1080 },
   { id: "mobile", label: "Mobile", width: 390, height: 844 },
 ];
+
+const demoHistoryStorageKey = "campaign-v1-static-editor:history";
+const demoHistoryMessageType = "campaign-v1-static-editor:history-updated";
+const demoHistoryRequestMessageType = "campaign-v1-static-editor:history-request";
 
 export function buildPreviewUrl(baseUrl: string, path: string, siteId?: string) {
   const base = new URL(baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`);
@@ -93,6 +120,47 @@ function resolveViewport(presets: EditorViewportPreset[], id: string | undefined
 function orientViewport(viewport: EditorViewportPreset, orientation: EditorViewportState["orientation"]) {
   if (orientation === "portrait") return viewport;
   return { ...viewport, width: viewport.height, height: viewport.width };
+}
+
+function convertDemoEditToEditableValue(edit: DemoStoredEdit | null): EditableValue | null {
+  if (!edit) return null;
+  if (edit.kind === "image") return { type: "image", src: edit.src, alt: edit.alt };
+  if (edit.kind === "link") return { type: "link", label: edit.text, href: edit.href };
+  return { type: "text", value: edit.text };
+}
+
+function mapDemoAuditEvents(events: DemoAuditEvent[]): AuditEvent[] {
+  return events.map((event) => ({
+    id: event.id,
+    siteId: "campaign-website-v1",
+    pagePath: event.pagePath,
+    action: event.action === "rollback" ? "version.rolled_back" : "draft.saved",
+    userId: "demo-local",
+    userLabel: event.userLabel,
+    createdAt: event.changedAt,
+    summary: event.summary,
+    regionId: event.regionKey,
+    kind: event.kind,
+    before: convertDemoEditToEditableValue(event.oldValue),
+    after: convertDemoEditToEditableValue(event.newValue),
+  }));
+}
+
+function readDemoAuditLog(): AuditEvent[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const events = JSON.parse(window.localStorage.getItem(demoHistoryStorageKey) ?? "[]") as DemoAuditEvent[];
+    return mapDemoAuditEvents(events);
+  } catch {
+    return [];
+  }
+}
+
+function isDemoHistoryMessage(value: unknown): value is DemoHistoryMessage {
+  if (!value || typeof value !== "object") return false;
+  const message = value as Partial<DemoHistoryMessage>;
+  return message.type === demoHistoryMessageType && Array.isArray(message.events);
 }
 
 export function EditorShell({
@@ -128,6 +196,7 @@ export function EditorShell({
   const [zoom, setZoom] = useState(clampZoom(defaultZoom));
   const [orientation, setOrientation] = useState<EditorViewportState["orientation"]>("portrait");
   const [activeWorkspace, setActiveWorkspace] = useState<ContentWorkspace>(initialWorkspace);
+  const [displayedAuditLog, setDisplayedAuditLog] = useState<AuditEvent[]>(auditLog);
   const dragCleanupRef = useRef<(() => void) | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
   const [selectedPost, setSelectedPost] = useState<{
@@ -167,6 +236,10 @@ export function EditorShell({
     setCustomHeight(height);
   }
 
+  function chooseZoomPercent(percent: number) {
+    setZoom(clampZoom(percent / 100));
+  }
+
   function startResize(edge: "left" | "right", clientX: number) {
     dragCleanupRef.current?.();
     const startWidth = activeViewport.width;
@@ -187,6 +260,29 @@ export function EditorShell({
   }
 
   useEffect(() => () => dragCleanupRef.current?.(), []);
+
+  useEffect(() => {
+    if (!demoMode) {
+      setDisplayedAuditLog(auditLog);
+      return;
+    }
+
+    setDisplayedAuditLog(readDemoAuditLog());
+    const refreshFromDemoStorage = (event: StorageEvent) => {
+      if (event.key === demoHistoryStorageKey) setDisplayedAuditLog(readDemoAuditLog());
+    };
+    const refreshFromDemoMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || !isDemoHistoryMessage(event.data)) return;
+      setDisplayedAuditLog(mapDemoAuditEvents(event.data.events));
+    };
+
+    window.addEventListener("storage", refreshFromDemoStorage);
+    window.addEventListener("message", refreshFromDemoMessage);
+    return () => {
+      window.removeEventListener("storage", refreshFromDemoStorage);
+      window.removeEventListener("message", refreshFromDemoMessage);
+    };
+  }, [auditLog, demoMode]);
 
   useEffect(() => {
     const previewOrigin = new URL(previewBaseUrl).origin;
@@ -241,6 +337,16 @@ export function EditorShell({
     setZoom(clampZoom(defaultZoom));
   }
 
+  function refreshDisplayedAuditLog() {
+    if (!demoMode) {
+      setDisplayedAuditLog(auditLog);
+      return;
+    }
+
+    setDisplayedAuditLog(readDemoAuditLog());
+    previewFrameRef.current?.contentWindow?.postMessage({ type: demoHistoryRequestMessageType }, window.location.origin);
+  }
+
   const workspaceContent =
     activeWorkspace === "pages"
       ? null
@@ -248,7 +354,7 @@ export function EditorShell({
           activeWorkspace,
           postsWorkspace,
           mediaAssets: mediaAssets.length > 0 ? mediaAssets : defaultDemoMediaAssets(previewBaseUrl, siteId),
-          auditLog,
+          auditLog: displayedAuditLog,
           pages,
         });
 
@@ -286,7 +392,7 @@ export function EditorShell({
           <div style={styles.toolbarStatus}>
             <span style={styles.muted}>Editing {currentPath}</span>
             <strong data-builder-active-width>
-              {activeViewport.label}: {activeViewport.width}px at {Math.round(activeViewport.zoom * 100)}%
+              {activeViewport.label}: {activeViewport.width}x{activeViewport.height} at {Math.round(activeViewport.zoom * 100)}%
             </strong>
           </div>
           <div style={styles.toolbarActions}>
@@ -336,8 +442,18 @@ export function EditorShell({
                 min={35}
                 max={125}
                 value={Math.round(activeViewport.zoom * 100)}
-                onChange={(event) => setZoom(clampZoom(Number(event.target.value) / 100))}
+                onChange={(event) => chooseZoomPercent(Number(event.target.value))}
               />
+              <input
+                aria-label="Custom zoom percent"
+                type="number"
+                min={35}
+                max={125}
+                value={Math.round(activeViewport.zoom * 100)}
+                onChange={(event) => chooseZoomPercent(Number(event.target.value))}
+                style={styles.zoomInput}
+              />
+              <span>%</span>
             </label>
             <button
               type="button"
@@ -350,7 +466,7 @@ export function EditorShell({
             <button type="button" style={styles.secondaryButton} onClick={resetViewport}>
               Reset
             </button>
-            <button type="button" style={styles.secondaryButton}>
+            <button type="button" style={styles.secondaryButton} onClick={refreshDisplayedAuditLog}>
               <Save size={17} aria-hidden="true" />
               <span>Save draft</span>
             </button>
@@ -432,7 +548,7 @@ export function EditorShell({
         {children}
         <h3 style={styles.historyTitle}>Version history</h3>
         <ol style={styles.historyList}>
-          {auditLog.map((event) => (
+          {displayedAuditLog.map((event) => (
             <li key={event.id} style={styles.historyItem}>
               <strong>{event.summary}</strong>
               <span style={styles.muted}>
@@ -922,6 +1038,13 @@ const styles = {
   },
   compactInput: {
     width: "74px",
+    border: "1px solid #c9d2df",
+    borderRadius: "8px",
+    padding: "8px",
+    font: "inherit",
+  },
+  zoomInput: {
+    width: "58px",
     border: "1px solid #c9d2df",
     borderRadius: "8px",
     padding: "8px",

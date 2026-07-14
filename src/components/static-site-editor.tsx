@@ -1,6 +1,14 @@
 "use client";
 
-import { type ChangeEvent, FormEvent, MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  FormEvent,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 type EditableKind = "text" | "image" | "link";
 
@@ -54,6 +62,8 @@ type AuditEvent = {
 const editStoragePrefix = "campaign-v1-static-editor";
 const editorSessionKey = "campaign-v1-static-editor-active";
 const historyStorageKey = `${editStoragePrefix}:history`;
+const historyMessageType = `${editStoragePrefix}:history-updated`;
+const historyRequestMessageType = `${editStoragePrefix}:history-request`;
 const editSelector =
   "main h1, main h2, main h3, main p, main blockquote, main a, main button, main time, main strong, main small, main span, footer p, footer a, header a, header nav a, img";
 
@@ -269,7 +279,13 @@ function readAuditLog(): AuditEvent[] {
 function appendAuditEvent(event: AuditEvent) {
   const events = [event, ...readAuditLog()].slice(0, 100);
   window.localStorage.setItem(historyStorageKey, JSON.stringify(events));
+  notifyParentOfAuditEvents(events);
   return events;
+}
+
+function notifyParentOfAuditEvents(events: AuditEvent[]) {
+  if (window.parent === window) return;
+  window.parent.postMessage({ type: historyMessageType, events }, window.location.origin);
 }
 
 function editSummary(edit: StoredEdit | null) {
@@ -395,7 +411,20 @@ export function StaticSiteEditor() {
   const [status, setStatus] = useState("Demo edits save in this browser only.");
   const selectedElement = useRef<HTMLElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const pointerMenuActionHandled = useRef(false);
   const galleryAssets = [...uploadedGalleryAssets, ...staticGalleryAssets];
+
+  useEffect(() => {
+    function respondWithAuditLog(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      const message = event.data as { type?: unknown };
+      if (message.type !== historyRequestMessageType) return;
+      notifyParentOfAuditEvents(readAuditLog());
+    }
+
+    window.addEventListener("message", respondWithAuditLog);
+    return () => window.removeEventListener("message", respondWithAuditLog);
+  }, []);
 
   function openMenuForElement(element: HTMLElement, clientX: number, clientY: number) {
     const kind = element.dataset.demoEditableKind as EditableKind | undefined;
@@ -642,6 +671,21 @@ export function StaticSiteEditor() {
     setMenu(null);
   }
 
+  function saveMenuEditFromPointer(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    pointerMenuActionHandled.current = true;
+    saveMenuEdit();
+    window.setTimeout(() => {
+      pointerMenuActionHandled.current = false;
+    }, 0);
+  }
+
+  function saveMenuEditFromClick() {
+    if (pointerMenuActionHandled.current) return;
+    saveMenuEdit();
+  }
+
   function clearEdits() {
     window.localStorage.removeItem(storageKey());
     window.location.reload();
@@ -874,7 +918,7 @@ export function StaticSiteEditor() {
             >
               Cancel
             </button>
-            <button type="button" onClick={saveMenuEdit}>
+            <button type="button" onPointerDown={saveMenuEditFromPointer} onClick={saveMenuEditFromClick}>
               Save locally
             </button>
           </div>
