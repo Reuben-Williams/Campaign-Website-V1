@@ -241,6 +241,17 @@ export function EditorShell({
     setZoom(clampZoom(defaultZoom));
   }
 
+  const workspaceContent =
+    activeWorkspace === "pages"
+      ? null
+      : renderWorkspaceContent({
+          activeWorkspace,
+          postsWorkspace,
+          mediaAssets: mediaAssets.length > 0 ? mediaAssets : defaultDemoMediaAssets(previewBaseUrl, siteId),
+          auditLog,
+          pages,
+        });
+
   return (
     <main data-builder-editor-shell style={styles.shell}>
       <aside style={styles.sidebar} aria-label="Site pages">
@@ -403,11 +414,7 @@ export function EditorShell({
         </div>
       </section>
 
-      {activeWorkspace === "posts" && postsWorkspace ? (
-        <section style={styles.contentWorkspace} aria-label="Posts workspace" data-builder-hosted-workspace="posts">
-          {postsWorkspace}
-        </section>
-      ) : null}
+      {workspaceContent}
 
       <aside style={{ ...styles.panel, display: activeWorkspace === "pages" ? "block" : "none" }} aria-label="Editing panel">
         {activeWorkspace !== "pages" ? (
@@ -468,6 +475,193 @@ export function EditorShell({
     </main>
   );
 }
+
+function renderWorkspaceContent({
+  activeWorkspace,
+  postsWorkspace,
+  mediaAssets,
+  auditLog,
+  pages,
+}: {
+  activeWorkspace: Exclude<ContentWorkspace, "pages">;
+  postsWorkspace?: ReactNode;
+  mediaAssets: MediaAsset[];
+  auditLog: AuditEvent[];
+  pages: BuilderPage[];
+}) {
+  if (activeWorkspace === "posts") {
+    return (
+      <section
+        style={styles.contentWorkspace}
+        aria-label="Posts workspace"
+        data-builder-content-workspace="posts"
+        data-builder-hosted-workspace="posts"
+      >
+        <WorkspaceHeader
+          title="Campaign updates"
+          eyebrow="Posts"
+          description="Draft and organize campaign news, events, and update entries before placing them on the public site."
+        />
+        {postsWorkspace ? (
+          postsWorkspace
+        ) : (
+          <div style={styles.workspaceGrid}>
+            {demoPosts.map((post) => (
+              <article key={post.title} style={styles.workspaceCard}>
+                <span style={styles.statusPill}>{post.status}</span>
+                <h3 style={styles.workspaceCardTitle}>{post.title}</h3>
+                <p style={styles.workspaceCardMeta}>{post.location}</p>
+                <p style={styles.workspaceCardText}>{post.summary}</p>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  if (activeWorkspace === "media") {
+    return (
+      <section style={styles.contentWorkspace} aria-label="Media workspace" data-builder-content-workspace="media">
+        <WorkspaceHeader
+          title="Media library"
+          eyebrow="Assets"
+          description="Review the campaign images available to the editor. Image replacements still happen from editable image fields in the page preview."
+        />
+        <div style={styles.mediaGrid}>
+          {mediaAssets.map((asset) => (
+            <article key={asset.id} style={styles.mediaCard}>
+              <img src={asset.url} alt={asset.alt} style={styles.mediaPreview} />
+              <div style={styles.mediaBody}>
+                <strong>{asset.label}</strong>
+                <span style={styles.workspaceCardMeta}>{asset.path}</span>
+                <span style={styles.muted}>{asset.mimeType}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section style={styles.contentWorkspace} aria-label="History workspace" data-builder-content-workspace="history">
+      <WorkspaceHeader
+        title="Change history"
+        eyebrow="Versions"
+        description="Track editor changes, published revisions, and rollback options for the selected campaign site."
+      />
+      {auditLog.length > 0 ? (
+        <ol style={styles.workspaceHistoryList}>
+          {auditLog.map((event) => (
+            <li key={event.id} style={styles.workspaceCard}>
+              <span style={styles.statusPill}>{event.action}</span>
+              <h3 style={styles.workspaceCardTitle}>{event.summary}</h3>
+              <p style={styles.workspaceCardMeta}>
+                {event.pagePath}
+                {event.regionId ? ` | ${event.regionId}` : ""}
+              </p>
+              <p style={styles.muted}>
+                {new Date(event.createdAt).toLocaleString()}
+                {event.userLabel || event.userId ? ` by ${event.userLabel ?? event.userId}` : ""}
+              </p>
+              <HistoryValue label="Before" value={event.before} />
+              <HistoryValue label="After" value={event.after} />
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <div style={styles.emptyState}>
+          <h3 style={styles.workspaceCardTitle}>No changes recorded yet</h3>
+          <p style={styles.workspaceCardText}>
+            Edit any region on {pages[0]?.label ?? "a page"} and save it to populate this history workspace.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function WorkspaceHeader({
+  title,
+  eyebrow,
+  description,
+}: {
+  title: string;
+  eyebrow: string;
+  description: string;
+}) {
+  return (
+    <header style={styles.workspaceHeader}>
+      <span style={styles.workspaceEyebrow}>{eyebrow}</span>
+      <h2 style={styles.workspaceTitle}>{title}</h2>
+      <p style={styles.workspaceDescription}>{description}</p>
+    </header>
+  );
+}
+
+function defaultDemoMediaAssets(previewBaseUrl: string, siteId: string): MediaAsset[] {
+  const now = new Date(0).toISOString();
+  return [
+    {
+      id: "campaign-office-briefing",
+      siteId,
+      path: "/images/campaign/campaign-office-briefing.jpg",
+      url: new URL("images/campaign/campaign-office-briefing.jpg", previewBaseUrl).toString(),
+      alt: "Campaign team reviewing materials in an office",
+      label: "Campaign office briefing",
+      mimeType: "image/jpeg",
+      source: "seed",
+      userId: "demo",
+      createdAt: now,
+    },
+    {
+      id: "community-table-outreach",
+      siteId,
+      path: "/images/campaign/community-table-outreach.jpg",
+      url: new URL("images/campaign/community-table-outreach.jpg", previewBaseUrl).toString(),
+      alt: "Community outreach table with campaign materials",
+      label: "Community table outreach",
+      mimeType: "image/jpeg",
+      source: "seed",
+      userId: "demo",
+      createdAt: now,
+    },
+    {
+      id: "volunteer-team-morales",
+      siteId,
+      path: "/images/campaign/volunteer-team-morales.jpg",
+      url: new URL("images/campaign/volunteer-team-morales.jpg", previewBaseUrl).toString(),
+      alt: "Morales campaign volunteer team",
+      label: "Volunteer team",
+      mimeType: "image/jpeg",
+      source: "seed",
+      userId: "demo",
+      createdAt: now,
+    },
+  ];
+}
+
+const demoPosts = [
+  {
+    title: "District listening session recap",
+    location: "News page",
+    status: "Draft",
+    summary: "Short-form campaign update ready to connect to a future posts collection.",
+  },
+  {
+    title: "Weekend volunteer launch",
+    location: "Events page",
+    status: "Scheduled",
+    summary: "Event-style post for canvassing, phone banking, or community stops.",
+  },
+  {
+    title: "Education priorities statement",
+    location: "Issues page",
+    status: "Published",
+    summary: "Policy update that can be reused across issue and news sections.",
+  },
+];
 
 function RegionEditorFields({
   selectedRegion,
@@ -808,6 +1002,109 @@ const styles = {
     overflow: "auto",
     background: "#f8fafc",
     padding: "24px",
+  },
+  workspaceHeader: {
+    display: "grid",
+    gap: "8px",
+    maxWidth: "760px",
+    marginBottom: "22px",
+  },
+  workspaceEyebrow: {
+    color: "#175cd3",
+    fontSize: "12px",
+    fontWeight: 800,
+    letterSpacing: "0",
+    textTransform: "uppercase",
+  },
+  workspaceTitle: {
+    margin: 0,
+    fontSize: "28px",
+    lineHeight: 1.15,
+  },
+  workspaceDescription: {
+    margin: 0,
+    color: "#475467",
+    fontSize: "15px",
+    lineHeight: 1.55,
+  },
+  workspaceGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+    gap: "14px",
+  },
+  workspaceCard: {
+    display: "grid",
+    gap: "8px",
+    alignContent: "start",
+    border: "1px solid #d7dde5",
+    borderRadius: "8px",
+    background: "#ffffff",
+    padding: "16px",
+  },
+  statusPill: {
+    justifySelf: "start",
+    border: "1px solid #b2ccff",
+    borderRadius: "999px",
+    background: "#eef4ff",
+    color: "#175cd3",
+    fontSize: "12px",
+    fontWeight: 800,
+    padding: "4px 8px",
+  },
+  workspaceCardTitle: {
+    margin: 0,
+    fontSize: "18px",
+    lineHeight: 1.25,
+  },
+  workspaceCardMeta: {
+    margin: 0,
+    color: "#667085",
+    fontSize: "13px",
+  },
+  workspaceCardText: {
+    margin: 0,
+    color: "#344054",
+    fontSize: "14px",
+    lineHeight: 1.5,
+  },
+  mediaGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "14px",
+  },
+  mediaCard: {
+    display: "grid",
+    overflow: "hidden",
+    border: "1px solid #d7dde5",
+    borderRadius: "8px",
+    background: "#ffffff",
+  },
+  mediaPreview: {
+    width: "100%",
+    aspectRatio: "16 / 10",
+    objectFit: "cover",
+    background: "#eef2f6",
+  },
+  mediaBody: {
+    display: "grid",
+    gap: "5px",
+    padding: "12px",
+  },
+  workspaceHistoryList: {
+    display: "grid",
+    gap: "12px",
+    listStyle: "none",
+    margin: 0,
+    padding: 0,
+  },
+  emptyState: {
+    display: "grid",
+    gap: "8px",
+    maxWidth: "560px",
+    border: "1px solid #d7dde5",
+    borderRadius: "8px",
+    background: "#ffffff",
+    padding: "18px",
   },
   fieldGroup: {
     display: "grid",

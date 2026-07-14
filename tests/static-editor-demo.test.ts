@@ -45,6 +45,19 @@ describe("GitHub Pages editor demo", () => {
     expect(nextConfig).not.toContain('path.resolve(configDirectory, "..")');
   });
 
+  it("renders non-empty workspace screens for posts, media, and history", () => {
+    const editorVendor = readFileSync(join(process.cwd(), "src/vendor/site-editor-platform/editor.tsx"), "utf8");
+
+    expect(editorVendor).toContain("renderWorkspaceContent");
+    expect(editorVendor).toContain('data-builder-content-workspace="posts"');
+    expect(editorVendor).toContain('data-builder-content-workspace="media"');
+    expect(editorVendor).toContain('data-builder-content-workspace="history"');
+    expect(editorVendor).toContain("Campaign updates");
+    expect(editorVendor).toContain("Media library");
+    expect(editorVendor).toContain("Change history");
+    expect(editorVendor).not.toContain('activeWorkspace === "posts" && postsWorkspace');
+  });
+
   it("exposes a footer editor button and a demo-aware credential modal", () => {
     const chrome = readFileSync(join(process.cwd(), "src/components/site-chrome.tsx"), "utf8");
     const editor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
