@@ -273,4 +273,15 @@ describe("GitHub Pages editor demo", () => {
     expect(staticEditor).toContain("setLinkPanel(null);");
     expect(staticEditor).toContain("setMenu(null);");
   });
+
+  it("prevents browser text selection while shift-clicking editable regions", () => {
+    const staticEditor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+    const styles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(staticEditor).toContain("clearBrowserTextSelection");
+    expect(staticEditor).toContain("window.getSelection()?.removeAllRanges()");
+    expect(styles).toContain("body.demo-editor-active .demo-editable-target");
+    expect(styles).toContain("user-select: none");
+    expect(styles).toContain("-webkit-user-select: none");
+  });
 });

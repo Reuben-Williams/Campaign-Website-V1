@@ -517,6 +517,10 @@ function applyLinkBindings() {
   });
 }
 
+function clearBrowserTextSelection() {
+  window.getSelection()?.removeAllRanges();
+}
+
 export function StaticSiteEditor() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [active, setActive] = useState(false);
@@ -807,6 +811,7 @@ export function StaticSiteEditor() {
 
       event.preventDefault();
       event.stopPropagation();
+      clearBrowserTextSelection();
       if (event.shiftKey) {
         toggleRegionSelection(target, event.clientX, event.clientY);
         return;
