@@ -71,6 +71,38 @@ describe("GitHub Pages editor demo", () => {
     expect(staticEditor).toContain("window.parent.postMessage");
   });
 
+  it("uses a generated media manifest for project image folders", () => {
+    const shell = readFileSync(join(process.cwd(), "src/components/platform-editor-shell.tsx"), "utf8");
+    const mediaManifest = readFileSync(join(process.cwd(), "src/generated/editor-media-assets.ts"), "utf8");
+    const syncScript = readFileSync(join(process.cwd(), "scripts/sync-editor-assets.mjs"), "utf8");
+
+    expect(shell).toContain("editorMediaAssets");
+    expect(shell).toContain("mediaAssets={resolvedMediaAssets}");
+    expect(mediaManifest).toContain("/builder-media/asw_carmenmorales/asw_carmenmorales_DZm65gWEY3Z_001.jpg");
+    expect(mediaManifest).toContain("/builder-media/morales4assembly/morales4assembly_DVytjhIjQV7_001.jpg");
+    expect(mediaManifest).toContain("/images/campaign/carmen-statehouse-leaders.jpg");
+    expect(mediaManifest.match(/siteId: "campaign-website-v1"/g)?.length).toBeGreaterThanOrEqual(200);
+    expect(syncScript).toContain("asw_carmenmorales");
+    expect(syncScript).toContain("public/builder-media");
+  });
+
+  it("provides clickable editable placeholder posts in the hosted posts workspace", () => {
+    const shell = readFileSync(join(process.cwd(), "src/components/platform-editor-shell.tsx"), "utf8");
+    const postsWorkspace = readFileSync(join(process.cwd(), "src/components/editor-posts-workspace.tsx"), "utf8");
+    const postManifest = readFileSync(join(process.cwd(), "src/generated/editor-posts.ts"), "utf8");
+
+    expect(shell).toContain("EditorPostsWorkspace");
+    expect(shell).toContain("postsWorkspace={<EditorPostsWorkspace");
+    expect(postsWorkspace).toContain("onClick={() => selectPost(post.id)}");
+    expect(postsWorkspace).toContain("Save post");
+    expect(postsWorkspace).toContain("Create placeholder");
+    expect(postsWorkspace).toContain("Linked regions");
+    expect(postsWorkspace).toContain("selectedPostId");
+    expect(postManifest).toContain("source: \"site-scan\"");
+    expect(postManifest).toContain("linkedRegionIds");
+    expect(postManifest).toContain("news.hero.title");
+  });
+
   it("renders non-empty workspace screens for posts, media, and history", () => {
     const editorVendor = readFileSync(join(process.cwd(), "src/vendor/site-editor-platform/editor.tsx"), "utf8");
 

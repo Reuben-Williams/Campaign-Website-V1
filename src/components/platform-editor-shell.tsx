@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { EditorPostsWorkspace } from "@/components/editor-posts-workspace";
+import { editorMediaAssets } from "@/generated/editor-media-assets";
 import { EditorShell } from "@/vendor/site-editor-platform/editor";
-import type { BuilderPage } from "@/vendor/site-editor-platform/core";
+import type { BuilderPage, MediaAsset } from "@/vendor/site-editor-platform/core";
 import builderConfig from "../../builder.config";
 
 const editorPages: BuilderPage[] = builderConfig.pages.map((page) => ({
@@ -31,6 +33,11 @@ export function PlatformEditorShell() {
 
   if (!location) return <main aria-label="Loading site editor" style={{ minHeight: "100vh", background: "#eef2f6" }} />;
 
+  const resolvedMediaAssets: MediaAsset[] = editorMediaAssets.map((asset) => ({
+    ...asset,
+    url: new URL(asset.path.replace(/^\/+/, ""), location.baseUrl).toString(),
+  }));
+
   return (
     <EditorShell
       siteId="campaign-website-v1"
@@ -39,6 +46,8 @@ export function PlatformEditorShell() {
       previewBaseUrl={location.baseUrl}
       userViewUrl={`${location.baseUrl}?builderExit=1`}
       defaultViewport="desktop"
+      mediaAssets={resolvedMediaAssets}
+      postsWorkspace={<EditorPostsWorkspace />}
       demoMode
     />
   );
