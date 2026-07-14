@@ -280,8 +280,20 @@ describe("GitHub Pages editor demo", () => {
 
     expect(staticEditor).toContain("clearBrowserTextSelection");
     expect(staticEditor).toContain("window.getSelection()?.removeAllRanges()");
+    expect(staticEditor).toContain("preventEditorTextSelection");
+    expect(staticEditor).toContain('document.addEventListener("selectstart", preventEditorTextSelection, true)');
     expect(styles).toContain("body.demo-editor-active .demo-editable-target");
+    expect(styles).toContain("body.demo-editor-active .demo-editable-target *");
     expect(styles).toContain("user-select: none");
     expect(styles).toContain("-webkit-user-select: none");
+  });
+
+  it("lets adjacent buttons be shift-clicked before showing the multi-select panel", () => {
+    const staticEditor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+
+    expect(staticEditor).toContain("const nextSelectedRegions");
+    expect(staticEditor).toContain("if (nextSelectedRegions.length < 2)");
+    expect(staticEditor).toContain("setLinkPanel(null)");
+    expect(staticEditor).toContain("setLinkPanel({");
   });
 });

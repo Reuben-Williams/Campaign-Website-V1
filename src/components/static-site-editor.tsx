@@ -521,6 +521,16 @@ function clearBrowserTextSelection() {
   window.getSelection()?.removeAllRanges();
 }
 
+function preventEditorTextSelection(event: Event) {
+  const target = event.target instanceof HTMLElement ? event.target : null;
+  if (!target || target.closest(".demo-editor-ui")) return;
+
+  if (target.closest(".site-header, .page-shell, .site-footer, [data-demo-editable-key], .demo-editable-target")) {
+    event.preventDefault();
+    clearBrowserTextSelection();
+  }
+}
+
 export function StaticSiteEditor() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [active, setActive] = useState(false);
@@ -629,7 +639,7 @@ export function StaticSiteEditor() {
     setGalleryOpen(false);
     setSelectedRegions((current) => {
       const exists = current.some((region) => region.key === key);
-      const next = exists
+      const nextSelectedRegions = exists
         ? current.filter((region) => region.key !== key)
         : [...current, { key, kind, label: regionLabel(element) }];
       if (exists && !element.dataset.demoLinkedHref) {
@@ -637,16 +647,23 @@ export function StaticSiteEditor() {
       } else if (!exists) {
         element.classList.add("demo-selected-link-region");
       }
-      return next;
+
+      if (nextSelectedRegions.length < 2) {
+        setLinkPanel(null);
+        setStatus("Select one more area to link multiple items together.");
+      } else {
+        setLinkPanel({
+          x: Math.min(clientX + 18, window.innerWidth - 360),
+          y: Math.min(clientY + 18, window.innerHeight - 360),
+          url: "https://",
+          pagePath: pageOptions[0]?.path ?? "/",
+          postId: availablePosts[0]?.id ?? "",
+        });
+        setStatus("Selected areas are ready to link. Choose a destination in the linking panel.");
+      }
+
+      return nextSelectedRegions;
     });
-    setLinkPanel({
-      x: Math.min(clientX, window.innerWidth - 360),
-      y: Math.min(clientY, window.innerHeight - 360),
-      url: "https://",
-      pagePath: pageOptions[0]?.path ?? "/",
-      postId: availablePosts[0]?.id ?? "",
-    });
-    setStatus("Selected areas are ready to link. Choose a destination in the linking panel.");
   }
 
   function linkSelectionToTarget(href: string) {
@@ -829,6 +846,7 @@ export function StaticSiteEditor() {
     document.addEventListener("click", blockNavigation, true);
     document.addEventListener("click", onPointer, true);
     document.addEventListener("dblclick", onPointer, true);
+    document.addEventListener("selectstart", preventEditorTextSelection, true);
     window.addEventListener("resize", refreshImageTargets);
     window.addEventListener("scroll", refreshImageTargets, true);
 
@@ -837,6 +855,7 @@ export function StaticSiteEditor() {
       document.removeEventListener("click", blockNavigation, true);
       document.removeEventListener("click", onPointer, true);
       document.removeEventListener("dblclick", onPointer, true);
+      document.removeEventListener("selectstart", preventEditorTextSelection, true);
       window.removeEventListener("resize", refreshImageTargets);
       window.removeEventListener("scroll", refreshImageTargets, true);
       setImageTargets([]);

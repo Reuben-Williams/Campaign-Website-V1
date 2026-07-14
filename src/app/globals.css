@@ -2222,7 +2222,11 @@ body.demo-editor-active .mobile-bottom-nav {
   cursor: pointer;
 }
 
-body.demo-editor-active .demo-editable-target {
+body.demo-editor-active .site-header,
+body.demo-editor-active .page-shell,
+body.demo-editor-active .site-footer,
+body.demo-editor-active .demo-editable-target,
+body.demo-editor-active .demo-editable-target * {
   -webkit-user-select: none;
   user-select: none;
 }
