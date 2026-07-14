@@ -296,4 +296,16 @@ describe("GitHub Pages editor demo", () => {
     expect(staticEditor).toContain("setLinkPanel(null)");
     expect(staticEditor).toContain("setLinkPanel({");
   });
+
+  it("uses the same blue selected outline for active editable text, image, and button regions", () => {
+    const staticEditor = readFileSync(join(process.cwd(), "src/components/static-site-editor.tsx"), "utf8");
+    const styles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(staticEditor).toContain("demo-active-edit-region");
+    expect(staticEditor).toContain("clearActiveEditRegion");
+    expect(staticEditor).toContain('element.classList.add("demo-active-edit-region")');
+    expect(staticEditor).toContain('element.classList.remove("demo-active-edit-region")');
+    expect(styles).toContain(".demo-active-edit-region");
+    expect(styles).toContain("rgba(37, 99, 235, 0.9)");
+  });
 });

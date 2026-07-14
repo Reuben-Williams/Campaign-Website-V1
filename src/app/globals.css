@@ -2252,7 +2252,8 @@ body.demo-editor-active .demo-editable-target * {
   box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.32);
 }
 
-.demo-selected-link-region {
+.demo-selected-link-region,
+.demo-active-edit-region {
   outline: 3px solid rgba(37, 99, 235, 0.9) !important;
   outline-offset: 6px !important;
   box-shadow: 0 0 0 7px rgba(37, 99, 235, 0.18) !important;

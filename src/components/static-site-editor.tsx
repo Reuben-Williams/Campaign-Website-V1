@@ -588,11 +588,13 @@ export function StaticSiteEditor() {
     const key = element.dataset.demoEditableKey;
     if (!kind || !key) return;
 
+    clearActiveEditRegion();
     clearSelectedRegionOutlines(selectedRegionsRef.current);
     setSelectedRegions([]);
     setLinkPanel(null);
     setGalleryOpen(false);
     selectedElement.current = element;
+    element.classList.add("demo-active-edit-region");
     setMenu({
       key,
       kind,
@@ -612,6 +614,12 @@ export function StaticSiteEditor() {
     }
   }
 
+  function clearActiveEditRegion() {
+    const element = selectedElement.current;
+    if (element) element.classList.remove("demo-active-edit-region");
+    selectedElement.current = null;
+  }
+
   function clearSelectedRegionOutlines(regions: SelectedRegionBinding[] = selectedRegionsRef.current) {
     regions.forEach((region) => {
       const element = document.querySelector<HTMLElement>(`[data-demo-editable-key="${CSS.escape(region.key)}"]`);
@@ -623,7 +631,7 @@ export function StaticSiteEditor() {
 
   function clearOpenEditorMenus() {
     clearSelectedRegionOutlines(selectedRegionsRef.current);
-    selectedElement.current = null;
+    clearActiveEditRegion();
     setMenu(null);
     setGalleryOpen(false);
     setLinkPanel(null);
@@ -635,6 +643,7 @@ export function StaticSiteEditor() {
     const kind = element.dataset.demoEditableKind as EditableKind | undefined;
     if (!key || !kind) return;
 
+    clearActiveEditRegion();
     setMenu(null);
     setGalleryOpen(false);
     setSelectedRegions((current) => {
@@ -759,6 +768,7 @@ export function StaticSiteEditor() {
   useEffect(() => {
     document.body.classList.toggle("demo-editor-active", active);
     if (!active) {
+      clearActiveEditRegion();
       setMenu(null);
       setGalleryOpen(false);
       setHistoryOpen(false);
@@ -864,6 +874,7 @@ export function StaticSiteEditor() {
         element.classList.remove("demo-editable-image-target");
         element.classList.remove("demo-editable-text-target");
         element.classList.remove("demo-selected-link-region");
+        element.classList.remove("demo-active-edit-region");
         element.removeAttribute("title");
       });
     };
@@ -946,6 +957,7 @@ export function StaticSiteEditor() {
 
     setStatus("Demo edit saved locally. It will remain in this browser until cleared.");
     setGalleryOpen(false);
+    clearActiveEditRegion();
     setMenu(null);
   }
 
@@ -1287,6 +1299,7 @@ export function StaticSiteEditor() {
               type="button"
               onClick={() => {
                 setGalleryOpen(false);
+                clearActiveEditRegion();
                 setMenu(null);
               }}
             >
