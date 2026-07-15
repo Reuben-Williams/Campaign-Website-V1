@@ -241,6 +241,8 @@ describe("GitHub Pages editor demo", () => {
     expect(editorVendor).toContain("HistoryAccordionItem");
     expect(editorVendor).toContain("historyItemDetails");
     expect(editorVendor).toContain("Expand to review details");
+    expect(editorVendor).toContain('gridTemplateColumns: "1fr"');
+    expect(editorVendor).toContain('justifySelf: "stretch"');
     expect(editorVendor).toContain("Restore previous version");
     expect(editorVendor).toContain("requestDemoRollback");
     expect(editorVendor).toContain("campaign-v1-static-editor:rollback-request");
